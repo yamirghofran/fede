@@ -14,6 +14,7 @@ from typing import Dict, List, Optional
 
 import google.genai as genai
 from google.genai import types
+from google.api_core import exceptions as api_exceptions
 
 from evaluation.checkpoint_manager import CheckpointManager
 from evaluation.config import (
@@ -136,19 +137,18 @@ class GeminiQueryGenerator:
                             time.sleep(2**attempt)
                         continue
 
-            except Exception as e:
-                error_str = str(e)
+            except api_exceptions.ResourceExhausted as e:
                 logger.error(
                     f"Error during generation (attempt {attempt + 1}/{max_retries}): {e}"
                 )
-                if (
-                    "quota" in error_str.lower()
-                    or "limit" in error_str.lower()
-                    or "429" in error_str
-                ):
-                    logger.warning("Rate limit hit, waiting 30 seconds...")
-                    time.sleep(30)
-                elif attempt < max_retries - 1:
+                logger.warning("Rate limit hit, waiting 30 seconds...")
+                time.sleep(30)
+                continue
+            except Exception as e:
+                logger.error(
+                    f"Error during generation (attempt {attempt + 1}/{max_retries}): {e}"
+                )
+                if attempt < max_retries - 1:
                     time.sleep(2**attempt)
                 continue
 
@@ -167,7 +167,7 @@ class GeminiQueryGenerator:
         # Build script path
         file_name = file_info.get("file_name")
         source = file_info.get("source")
-        script_path = f"{SCRIPTS_BASE_PATH}/{source}/{file_name}.txt"
+        script_path = os.path.join(SCRIPTS_BASE_PATH, source, f"{file_name}.txt")
 
         # Check if script exists
         if not os.path.exists(script_path):

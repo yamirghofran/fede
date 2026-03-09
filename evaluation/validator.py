@@ -40,14 +40,11 @@ class QueryValidator:
         actor_names = set()
 
         for movie_key, movie_data in self.metadata.items():
-            # Add movie title
+            # Add movie title (full title only to avoid false positives)
             file_info = movie_data.get("file", {})
             title = file_info.get("name", "")
             if title:
                 movie_titles.add(title.lower())
-                # Also add words from title (e.g., "Spider-Man" -> ["spider", "man"])
-                words = re.findall(r"\b\w+\b", title.lower())
-                movie_titles.update(words)
 
         # Note: We don't have explicit actor names in metadata
         # If available, we would add them here
@@ -90,13 +87,14 @@ class QueryValidator:
             if token in title_tokens and len(token) > 2:  # Ignore short words
                 partial_matches.append(token)
 
-        # Check against forbidden words (other movies)
+        # Check against forbidden titles (other movies) - full title match only
         other_movie_matches = []
-        for token in query_tokens:
-            if token in self.forbidden_words["movie_titles"] and len(token) > 3:
-                # Don't flag if it's from the target movie
-                if token not in title_tokens:
-                    other_movie_matches.append(token)
+        query_lower = query.lower()
+        for title in self.forbidden_words["movie_titles"]:
+            if title == movie_title.lower():
+                continue
+            if title in query_lower:
+                other_movie_matches.append(title)
 
         # Calculate leakage score
         leakage_score = 0.0

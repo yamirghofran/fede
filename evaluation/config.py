@@ -6,7 +6,7 @@ import os
 
 # Gemini API Configuration
 GEMINI_API_KEY_ENV = "GEMINI_API_KEY"
-MODEL_NAME = "gemini-2.5-flash"
+MODEL_NAME = "gemini-1.5-flash"
 
 # Generation Settings
 TARGET_NUM_QUERIES = 300
@@ -23,10 +23,10 @@ MAX_LEAKAGE_SCORE = 0.7
 
 # Data Paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-METADATA_PATH = f"{BASE_DIR}/data/scripts/metadata/clean_parsed_meta.json"
-SCRIPTS_BASE_PATH = f"{BASE_DIR}/data/scripts/unprocessed"
-OUTPUT_PATH = f"{BASE_DIR}/evaluation_dataset/generated_queries.json"
-CHECKPOINT_PATH = f"{BASE_DIR}/evaluation_dataset/{CHECKPOINT_FILE}"
+METADATA_PATH = os.path.join(BASE_DIR, "data", "scripts", "metadata", "clean_parsed_meta.json")
+SCRIPTS_BASE_PATH = os.path.join(BASE_DIR, "data", "scripts", "unprocessed")
+OUTPUT_PATH = os.path.join(BASE_DIR, "data", "evaluation_dataset", "generated_queries.json")
+CHECKPOINT_PATH = os.path.join(BASE_DIR, "data", "evaluation_dataset", CHECKPOINT_FILE)
 
 # Prompt
 SYSTEM_PROMPT = """You are generating evaluation queries for a movie search system. Generate a descriptive summary that captures the essence, plot, themes, or atmosphere of the movie.

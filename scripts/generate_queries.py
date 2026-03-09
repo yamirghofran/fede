@@ -66,7 +66,7 @@ Examples:
         "--model",
         type=str,
         default=MODEL_NAME,
-        choices=["gemini-1.5-pro", "gemini-1.5-flash"],
+        choices=["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.5-flash"],
         help=f"Gemini model to use (default: {MODEL_NAME})",
     )
 
@@ -136,7 +136,7 @@ Examples:
 
     print("=" * 70)
     print("Movie Query Generator - Mustafa et al. [4] Methodology")
-    print("Provider: Google Gemini API (gemini-1.5-pro - FREE TIER)")
+    print(f"Provider: Google Gemini API ({args.model})")
     print("=" * 70)
     print(f"Number of queries: {args.num_queries}")
     print(f"Model: {args.model}")
