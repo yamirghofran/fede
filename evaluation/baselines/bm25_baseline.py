@@ -36,6 +36,10 @@ def _read_script(path: str) -> str:
                 return f.read()
         except UnicodeDecodeError:
             continue
+        except OSError as e:
+            logger.warning("Error reading script at %s: %s", path, e)
+            return ""
+    logger.warning("Could not decode script %s with any of the attempted encodings.", path)
     return ""
 
 
