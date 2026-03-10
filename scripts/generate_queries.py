@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate movie description queries using Google Gemini API.
+Generate movie description queries using OpenAI API.
 Following methodology from Mustafa et al. [4] - IJECE Vol. 14, No. 6
 Uses FULL movie scripts as input (no truncation).
 
@@ -10,28 +10,29 @@ Features:
 - Partial result backup
 """
 
+import argparse
 import os
 import sys
-import argparse
+
 from dotenv import load_dotenv
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from evaluation.generator import GeminiQueryGenerator
 from evaluation.config import (
-    TARGET_NUM_QUERIES,
+    CHECKPOINT_INTERVAL,
+    CHECKPOINT_PATH,
+    ENABLE_VALIDATION,
     MODEL_NAME,
     OUTPUT_PATH,
-    CHECKPOINT_PATH,
-    CHECKPOINT_INTERVAL,
-    ENABLE_VALIDATION,
+    TARGET_NUM_QUERIES,
 )
+from evaluation.generator import OpenAIQueryGenerator
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate evaluation queries for movie search using Google Gemini API",
+        description="Generate evaluation queries for movie search using OpenAI API",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -47,8 +48,8 @@ Examples:
   # Start fresh (ignore checkpoint)
   python scripts/generate_queries.py --no-resume
 
-  # Use gemini-1.5-flash instead of pro
-  python scripts/generate_queries.py --model gemini-1.5-flash
+  # Use gpt-4o instead of gpt-4o-mini
+  python scripts/generate_queries.py --model gpt-4o
 
   # Disable validation for faster generation
   python scripts/generate_queries.py --no-validation
@@ -66,8 +67,8 @@ Examples:
         "--model",
         type=str,
         default=MODEL_NAME,
-        choices=["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.5-flash"],
-        help=f"Gemini model to use (default: {MODEL_NAME})",
+        choices=["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"],
+        help=f"OpenAI model to use (default: {MODEL_NAME})",
     )
 
     parser.add_argument(
@@ -106,13 +107,13 @@ Examples:
     load_dotenv()
 
     # Check API key
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        print("Error: GEMINI_API_KEY not found in .env file")
-        print("Please create a .env file with your Gemini API key:")
-        print("  GEMINI_API_KEY=your-gemini-api-key-here")
+        print("Error: OPENAI_API_KEY not found in .env file")
+        print("Please create a .env file with your OpenAI API key:")
+        print("  OPENAI_API_KEY=your-openai-api-key-here")
         print()
-        print("Get your free API key from: https://ai.google.dev/")
+        print("Get your API key from: https://platform.openai.com/api-keys")
         sys.exit(1)
 
     # Check for existing checkpoint
@@ -136,7 +137,7 @@ Examples:
 
     print("=" * 70)
     print("Movie Query Generator - Mustafa et al. [4] Methodology")
-    print(f"Provider: Google Gemini API ({args.model})")
+    print("Provider: OpenAI API")
     print("=" * 70)
     print(f"Number of queries: {args.num_queries}")
     print(f"Model: {args.model}")
@@ -155,8 +156,8 @@ Examples:
     print()
 
     # Initialize generator
-    print("Initializing Gemini generator...")
-    generator = GeminiQueryGenerator(
+    print("Initializing OpenAI generator...")
+    generator = OpenAIQueryGenerator(
         api_key=api_key,
         model=args.model,
         checkpoint_interval=args.checkpoint_interval,
@@ -165,7 +166,6 @@ Examples:
 
     # Generate queries
     print("Generating queries (this will take 45-60 minutes)...")
-    print("Rate limiting: 15 requests per minute to stay within free tier")
     print("Features: Checkpointing, Validation, Partial Backup")
     print()
     queries = generator.generate_batch(
@@ -190,8 +190,7 @@ Examples:
     print(f"Output saved to: {args.output}")
     print(f"Methodology: Mustafa et al. [4]")
     print(f"Input type: Full scripts")
-    print(f"API used: Google Gemini ({args.model})")
-    print(f"Cost: $0.00 (within free tier)")
+    print(f"API used: OpenAI ({args.model})")
     print(f"Validation: {'Enabled' if not args.no_validation else 'Disabled'}")
     print("=" * 70)
 

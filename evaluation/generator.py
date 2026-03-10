@@ -1,5 +1,5 @@
 """
-Movie Query Generator using Google Gemini with Checkpointing and Validation
+Movie Query Generator using OpenAI with Checkpointing and Validation
 Following Mustafa et al. [4] methodology - IJECE Vol. 14, No. 6
 Uses FULL movie scripts as input (no truncation)
 """
@@ -12,9 +12,8 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import google.genai as genai
-from google.genai import types
-from google.api_core import exceptions as api_exceptions
+from openai import OpenAI
+from tqdm import tqdm
 
 from evaluation.checkpoint_manager import CheckpointManager
 from evaluation.config import (
@@ -36,9 +35,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class GeminiQueryGenerator:
+class OpenAIQueryGenerator:
     """
-    Generates movie description queries using Google Gemini.
+    Generates movie description queries using OpenAI.
     Features: Checkpointing, Validation, Backup.
     """
 
@@ -50,15 +49,15 @@ class GeminiQueryGenerator:
         enable_validation: bool = True,
     ):
         """
-        Initialize Gemini generator with all features.
+        Initialize OpenAI generator with all features.
 
         Args:
-            api_key: Google Gemini API key
-            model: Model to use (default: gemini-1.5-pro)
+            api_key: OpenAI API key
+            model: Model to use (default: gpt-4o-mini)
             checkpoint_interval: Save checkpoint every N queries
             enable_validation: Enable lexical leakage detection
         """
-        self.client = genai.Client(api_key=api_key)
+        self.client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
         self.model = model
         self.metadata = self._load_metadata()
 
@@ -95,7 +94,7 @@ class GeminiQueryGenerator:
                 return f.read()
 
     def _build_prompt(self, script_content: str) -> str:
-        """Build prompt for Gemini using FULL script content."""
+        """Build prompt using FULL script content."""
         return f"""Movie script: {script_content}
 
 {SYSTEM_PROMPT}"""
@@ -106,28 +105,25 @@ class GeminiQueryGenerator:
         """Generate query with automatic retry on failure."""
         for attempt in range(max_retries):
             try:
-                response = self.client.models.generate_content(
+                response = self.client.chat.completions.create(
                     model=self.model,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        temperature=0.8, max_output_tokens=1000, top_p=0.8, top_k=40
-                    ),
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.8,
+                    max_tokens=1000,
+                    top_p=0.8,
                 )
 
-                if response.candidates:
-                    candidate = response.candidates[0]
-                    if (
-                        candidate.finish_reason
-                        and candidate.finish_reason.name == "SAFETY"
-                    ):
+                if response.choices and len(response.choices) > 0:
+                    choice = response.choices[0]
+                    if choice.finish_reason == "content_filter":
                         logger.warning(
-                            f"Response blocked by safety filter (attempt {attempt + 1}/{max_retries})"
+                            f"Response blocked by content filter (attempt {attempt + 1}/{max_retries})"
                         )
                         time.sleep(2**attempt)
                         continue
 
-                    if candidate.content and candidate.content.parts:
-                        query = candidate.content.parts[0].text.strip()
+                    if choice.message and choice.message.content:
+                        query = choice.message.content.strip()
                         return query
                     else:
                         logger.warning(
@@ -141,14 +137,14 @@ class GeminiQueryGenerator:
                 logger.error(
                     f"Error during generation (attempt {attempt + 1}/{max_retries}): {e}"
                 )
-                logger.warning("Rate limit hit, waiting 30 seconds...")
-                time.sleep(30)
-                continue
-            except Exception as e:
-                logger.error(
-                    f"Error during generation (attempt {attempt + 1}/{max_retries}): {e}"
-                )
-                if attempt < max_retries - 1:
+                if (
+                    "rate_limit" in error_str.lower()
+                    or "limit" in error_str.lower()
+                    or "429" in error_str
+                ):
+                    logger.warning("Rate limit hit, waiting 30 seconds...")
+                    time.sleep(30)
+                elif attempt < max_retries - 1:
                     time.sleep(2**attempt)
                 continue
 
@@ -271,8 +267,6 @@ class GeminiQueryGenerator:
         logger.info(f"Features: Checkpointing, Validation, Backup")
 
         failed_count = 0
-
-        from tqdm import tqdm
 
         for i, movie_key in enumerate(tqdm(sampled_keys, desc="Generating queries")):
             query_id = start_id + i + 1
