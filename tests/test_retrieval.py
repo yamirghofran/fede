@@ -124,37 +124,44 @@ class TestHitConverters:
 # search_sentences
 # ---------------------------------------------------------------------------
 
+def _mock_query_response(hits):
+    """Wrap a list of hits in a mock query_points response object."""
+    response = MagicMock()
+    response.points = hits
+    return response
+
+
 class TestSearchSentences:
     def test_searches_sentences_collection(self, retriever, mock_client):
-        mock_client.search.return_value = []
+        mock_client.query_points.return_value = _mock_query_response([])
         retriever.search_sentences(_QUERY, top_k=5)
-        mock_client.search.assert_called_once()
-        assert mock_client.search.call_args.kwargs["collection_name"] == "sentences"
+        mock_client.query_points.assert_called_once()
+        assert mock_client.query_points.call_args.kwargs["collection_name"] == "sentences"
 
     def test_passes_top_k_as_limit(self, retriever, mock_client):
-        mock_client.search.return_value = []
+        mock_client.query_points.return_value = _mock_query_response([])
         retriever.search_sentences(_QUERY, top_k=7)
-        assert mock_client.search.call_args.kwargs["limit"] == 7
+        assert mock_client.query_points.call_args.kwargs["limit"] == 7
 
     def test_returns_sentence_results(self, retriever, mock_client):
-        mock_client.search.return_value = [
+        mock_client.query_points.return_value = _mock_query_response([
             _mock_sentence_hit("sc1", 0.9),
             _mock_sentence_hit("sc2", 0.8),
-        ]
+        ])
         results = retriever.search_sentences(_QUERY, top_k=2)
         assert len(results) == 2
         assert all(isinstance(r, SentenceResult) for r in results)
 
     def test_movie_id_filter_passed_when_provided(self, retriever, mock_client):
-        mock_client.search.return_value = []
+        mock_client.query_points.return_value = _mock_query_response([])
         retriever.search_sentences(_QUERY, top_k=5, movie_id_filter="m42")
-        call_kwargs = mock_client.search.call_args.kwargs
+        call_kwargs = mock_client.query_points.call_args.kwargs
         assert call_kwargs["query_filter"] is not None
 
     def test_no_filter_when_movie_id_is_none(self, retriever, mock_client):
-        mock_client.search.return_value = []
+        mock_client.query_points.return_value = _mock_query_response([])
         retriever.search_sentences(_QUERY, top_k=5, movie_id_filter=None)
-        assert mock_client.search.call_args.kwargs["query_filter"] is None
+        assert mock_client.query_points.call_args.kwargs["query_filter"] is None
 
 
 # ---------------------------------------------------------------------------
@@ -163,12 +170,12 @@ class TestSearchSentences:
 
 class TestSearchScenes:
     def test_searches_scenes_collection(self, retriever, mock_client):
-        mock_client.search.return_value = []
+        mock_client.query_points.return_value = _mock_query_response([])
         retriever.search_scenes(_QUERY, top_k=5)
-        assert mock_client.search.call_args.kwargs["collection_name"] == "scenes"
+        assert mock_client.query_points.call_args.kwargs["collection_name"] == "scenes"
 
     def test_returns_scene_results(self, retriever, mock_client):
-        mock_client.search.return_value = [_mock_scene_hit("sc1", 0.9)]
+        mock_client.query_points.return_value = _mock_query_response([_mock_scene_hit("sc1", 0.9)])
         results = retriever.search_scenes(_QUERY, top_k=1)
         assert len(results) == 1
         assert isinstance(results[0], SceneResult)
@@ -180,10 +187,12 @@ class TestSearchScenes:
 
 class TestHierarchicalSearch:
     def _setup_client(self, mock_client, sentence_hits, scene_hits, scroll_points=None):
-        """Wire mock_client so search() returns sentence then scene hits,
+        """Wire mock_client so query_points() returns sentence then scene hits,
         and scroll() returns optional extra points for sentence-only scenes."""
-        search_responses = [sentence_hits, scene_hits]
-        mock_client.search.side_effect = search_responses
+        mock_client.query_points.side_effect = [
+            _mock_query_response(sentence_hits),
+            _mock_query_response(scene_hits),
+        ]
         mock_client.scroll.return_value = (scroll_points or [], None)
 
     def test_returns_scene_results(self, retriever, mock_client):
@@ -317,7 +326,10 @@ class TestHierarchicalSearch:
 
 class TestHierarchicalSearchWrapper:
     def test_delegates_to_retriever(self, mock_client):
-        mock_client.search.side_effect = [[], []]
+        mock_client.query_points.side_effect = [
+            _mock_query_response([]),
+            _mock_query_response([]),
+        ]
         mock_client.scroll.return_value = ([], None)
         with patch("vector_db.retrieval.get_qdrant_client", return_value=mock_client):
             results = hierarchical_search(_QUERY, top_k=5, config=_CFG)

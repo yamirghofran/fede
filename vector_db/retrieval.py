@@ -80,14 +80,14 @@ class ScriptRetriever:
             List of SentenceResult sorted by descending cosine similarity score.
         """
         query_filter = _build_movie_filter(movie_id_filter)
-        hits = self._client.search(
+        response = self._client.query_points(
             collection_name=CollectionNames.SENTENCES.value,
-            query_vector=query_embedding,
+            query=query_embedding,
             limit=top_k,
             query_filter=query_filter,
             with_payload=True,
         )
-        return [_hit_to_sentence_result(h) for h in hits]
+        return [_hit_to_sentence_result(h) for h in response.points]
 
     def search_scenes(
         self,
@@ -106,14 +106,14 @@ class ScriptRetriever:
             List of SceneResult sorted by descending cosine similarity score.
         """
         query_filter = _build_movie_filter(movie_id_filter)
-        hits = self._client.search(
+        response = self._client.query_points(
             collection_name=CollectionNames.SCENES.value,
-            query_vector=query_embedding,
+            query=query_embedding,
             limit=top_k,
             query_filter=query_filter,
             with_payload=True,
         )
-        return [_hit_to_scene_result(h) for h in hits]
+        return [_hit_to_scene_result(h) for h in response.points]
 
     # ------------------------------------------------------------------
     # Hierarchical search — primary online retrieval entry point

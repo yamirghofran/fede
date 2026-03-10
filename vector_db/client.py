@@ -79,7 +79,8 @@ def _create_server_client(config: QdrantConfig) -> QdrantClient:
         api_key=config.api_key,
         https=config.https,
         timeout=config.timeout,
-    )
+        prefer_grpc=False,  # always use REST; avoids port confusion when gRPC
+    )                       # is mapped to a different host port
 
 
 def _validate_connection(client: QdrantClient) -> None:
