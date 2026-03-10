@@ -9,6 +9,7 @@ from .collections import (
 )
 from .config import QdrantConfig
 from .crud import BaseVectorCRUD
+from .indexer import SceneRecord, ScriptIndexer, SentenceRecord, index_movie
 from .schemas import CollectionNames, LineType, ScenePayload, SentencePayload
 
 __all__ = [
@@ -29,4 +30,9 @@ __all__ = [
     "SentencePayload",
     # crud
     "BaseVectorCRUD",
+    # indexer
+    "ScriptIndexer",
+    "SceneRecord",
+    "SentenceRecord",
+    "index_movie",
 ]
