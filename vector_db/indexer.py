@@ -10,6 +10,7 @@ from .client import get_qdrant_client
 from .collections import CollectionManager
 from .config import QdrantConfig
 from .crud import BaseVectorCRUD
+from qdrant_client.models import PointStruct
 from .schemas import (
     CollectionNames,
     LineType,
@@ -162,7 +163,6 @@ class ScriptIndexer:
         payload: dict,
     ) -> None:
         """Upsert a single point, bypassing the duplicate-check in crud.add()."""
-        from qdrant_client.models import PointStruct
 
         crud.client.upsert(
             collection_name=crud.collection_name,
@@ -171,7 +171,6 @@ class ScriptIndexer:
         )
 
     def _batch_upsert_scenes(self, records: List[SceneRecord]) -> None:
-        from qdrant_client.models import PointStruct
 
         points = [
             PointStruct(
@@ -196,8 +195,6 @@ class ScriptIndexer:
         )
 
     def _batch_upsert_sentences(self, records: List[SentenceRecord]) -> None:
-        from qdrant_client.models import PointStruct
-
         points = [
             PointStruct(
                 id=_sentence_point_id(r.movie_id, r.scene_id, r.position_in_script),
