@@ -1,12 +1,12 @@
 """
-Configuration for Google Gemini query generation with validation and checkpointing
+Configuration for OpenAI query generation with validation and checkpointing
 """
 
 import os
 
-# Gemini API Configuration
-GEMINI_API_KEY_ENV = "GEMINI_API_KEY"
-MODEL_NAME = "gemini-1.5-flash"
+# OpenAI API Configuration
+OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
+MODEL_NAME = "google/gemini-3.1-flash-lite-preview"
 
 # Generation Settings
 TARGET_NUM_QUERIES = 300
@@ -23,9 +23,13 @@ MAX_LEAKAGE_SCORE = 0.7
 
 # Data Paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-METADATA_PATH = os.path.join(BASE_DIR, "data", "scripts", "metadata", "clean_parsed_meta.json")
+METADATA_PATH = os.path.join(
+    BASE_DIR, "data", "scripts", "metadata", "clean_parsed_meta.json"
+)
 SCRIPTS_BASE_PATH = os.path.join(BASE_DIR, "data", "scripts", "unprocessed")
-OUTPUT_PATH = os.path.join(BASE_DIR, "data", "evaluation_dataset", "generated_queries.json")
+OUTPUT_PATH = os.path.join(
+    BASE_DIR, "data", "evaluation_dataset", "generated_queries.json"
+)
 CHECKPOINT_PATH = os.path.join(BASE_DIR, "data", "evaluation_dataset", CHECKPOINT_FILE)
 
 # Prompt
