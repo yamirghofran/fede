@@ -18,8 +18,8 @@ from dotenv import load_dotenv
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from evaluation.generator import GeminiQueryGenerator
-from evaluation.config import (
+from evaluation.dataset_generation.generator import GeminiQueryGenerator
+from evaluation.dataset_generation.config import (
     TARGET_NUM_QUERIES,
     MODEL_NAME,
     OUTPUT_PATH,

@@ -16,8 +16,8 @@ import google.genai as genai
 from google.genai import types
 from google.api_core import exceptions as api_exceptions
 
-from evaluation.checkpoint_manager import CheckpointManager
-from evaluation.config import (
+from evaluation.dataset_generation.checkpoint_manager import CheckpointManager
+from evaluation.dataset_generation.config import (
     BACKUP_AFTER_EACH_QUERY,
     CHECKPOINT_INTERVAL,
     CHECKPOINT_PATH,
@@ -30,7 +30,7 @@ from evaluation.config import (
     SCRIPTS_BASE_PATH,
     SYSTEM_PROMPT,
 )
-from evaluation.validator import QueryValidator
+from evaluation.dataset_generation.validator import QueryValidator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
