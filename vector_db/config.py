@@ -42,7 +42,7 @@ def _from_profile_or_global(
 
 @dataclass
 class QdrantConfig:
-    """Configuration for Qdrant connection.
+    """Configuration for Qdrant connection and FEDE script collection tuning.
 
     Attributes:
         mode: Connection mode - 'local' or 'server'
@@ -52,6 +52,13 @@ class QdrantConfig:
         https: Whether to use HTTPS in server mode
         path: Directory path for local mode persistence
         timeout: Client timeout in seconds
+        vector_size: Dimensionality of EmbeddingGemma output vectors (default: 768)
+        scripts_on_disk: Store script vectors on disk rather than RAM
+        hnsw_on_disk: Store the HNSW graph on disk
+        hnsw_m: HNSW M parameter — controls graph connectivity/recall trade-off
+        int8_quantization: Enable INT8 scalar quantization on both collections
+        quantile: Quantile used to calibrate INT8 scalar quantization boundaries
+        quantization_always_ram: Keep quantized vectors in RAM for faster scoring
     """
 
     mode: Literal["local", "server"] = "server"
@@ -63,13 +70,15 @@ class QdrantConfig:
     path: str = "./qdrant_data"
     timeout: float = 10.0
     environment: Optional[str] = None
+    # EmbeddingGemma produces 768-dimensional vectors by default.
     vector_size: int = 768
-    books_on_disk: bool = True
-    books_int8_quantization: bool = True
-    books_quantile: float = 0.99
-    books_quantization_always_ram: bool = True
-    books_hnsw_on_disk: bool = True
-    books_hnsw_m: Optional[int] = 16
+    # Storage / indexing settings shared across the scenes and sentences collections.
+    scripts_on_disk: bool = True
+    hnsw_on_disk: bool = True
+    hnsw_m: Optional[int] = 16
+    int8_quantization: bool = True
+    quantile: float = 0.99
+    quantization_always_ram: bool = True
 
     @classmethod
     def from_env(cls) -> "QdrantConfig":
@@ -83,13 +92,13 @@ class QdrantConfig:
             QDRANT_HTTPS: Whether to use HTTPS
             QDRANT_PATH: Directory for local mode
             QDRANT_TIMEOUT: Client timeout in seconds
-            QDRANT_VECTOR_SIZE: Vector dimension used by collections
-            QDRANT_BOOKS_ON_DISK: Store book vectors on disk
-            QDRANT_BOOKS_INT8_QUANTIZATION: Enable Int8 scalar quantization for books
-            QDRANT_BOOKS_QUANTILE: Scalar quantization quantile for books
-            QDRANT_BOOKS_QUANT_ALWAYS_RAM: Keep quantized vectors in RAM
-            QDRANT_BOOKS_HNSW_ON_DISK: Store books HNSW graph on disk
-            QDRANT_BOOKS_HNSW_M: HNSW M parameter for books
+            QDRANT_VECTOR_SIZE: Vector dimension (must match EmbeddingGemma output)
+            QDRANT_SCRIPTS_ON_DISK: Store script vectors on disk (default: true)
+            QDRANT_HNSW_ON_DISK: Store HNSW graph on disk (default: true)
+            QDRANT_HNSW_M: HNSW M parameter (default: 16)
+            QDRANT_INT8_QUANTIZATION: Enable INT8 scalar quantization (default: true)
+            QDRANT_QUANTILE: Scalar quantization calibration quantile (default: 0.99)
+            QDRANT_QUANT_ALWAYS_RAM: Keep quantized vectors in RAM (default: true)
 
         Returns:
             QdrantConfig instance
@@ -110,8 +119,8 @@ class QdrantConfig:
             _from_profile_or_global("URL", environment, ""),
             https_hint=https,
         )
-        books_hnsw_m_raw = os.getenv("QDRANT_BOOKS_HNSW_M", "16").strip()
-        books_hnsw_m = int(books_hnsw_m_raw) if books_hnsw_m_raw else None
+        hnsw_m_raw = os.getenv("QDRANT_HNSW_M", "16").strip()
+        hnsw_m = int(hnsw_m_raw) if hnsw_m_raw else None
 
         return cls(
             mode=mode,  # type: ignore[arg-type]
@@ -124,18 +133,14 @@ class QdrantConfig:
             timeout=float(os.getenv("QDRANT_TIMEOUT", "10.0")),
             environment=environment,
             vector_size=int(os.getenv("QDRANT_VECTOR_SIZE", "768")),
-            books_on_disk=_parse_bool(os.getenv("QDRANT_BOOKS_ON_DISK", "true")),
-            books_int8_quantization=_parse_bool(
-                os.getenv("QDRANT_BOOKS_INT8_QUANTIZATION", "true")
+            scripts_on_disk=_parse_bool(os.getenv("QDRANT_SCRIPTS_ON_DISK", "true")),
+            hnsw_on_disk=_parse_bool(os.getenv("QDRANT_HNSW_ON_DISK", "true")),
+            hnsw_m=hnsw_m,
+            int8_quantization=_parse_bool(os.getenv("QDRANT_INT8_QUANTIZATION", "true")),
+            quantile=float(os.getenv("QDRANT_QUANTILE", "0.99")),
+            quantization_always_ram=_parse_bool(
+                os.getenv("QDRANT_QUANT_ALWAYS_RAM", "true")
             ),
-            books_quantile=float(os.getenv("QDRANT_BOOKS_QUANTILE", "0.99")),
-            books_quantization_always_ram=_parse_bool(
-                os.getenv("QDRANT_BOOKS_QUANT_ALWAYS_RAM", "true")
-            ),
-            books_hnsw_on_disk=_parse_bool(
-                os.getenv("QDRANT_BOOKS_HNSW_ON_DISK", "true")
-            ),
-            books_hnsw_m=books_hnsw_m,
         )
 
     def validate(self) -> None:
@@ -167,12 +172,12 @@ class QdrantConfig:
         if self.vector_size <= 0:
             raise ValueError(f"Vector size must be > 0. Got: {self.vector_size}")
 
-        if not (0.0 < self.books_quantile <= 1.0):
+        if not (0.0 < self.quantile <= 1.0):
             raise ValueError(
-                f"QDRANT_BOOKS_QUANTILE must be in (0, 1]. Got: {self.books_quantile}"
+                f"QDRANT_QUANTILE must be in (0, 1]. Got: {self.quantile}"
             )
 
-        if self.books_hnsw_m is not None and self.books_hnsw_m <= 0:
+        if self.hnsw_m is not None and self.hnsw_m <= 0:
             raise ValueError(
-                f"QDRANT_BOOKS_HNSW_M must be > 0 when set. Got: {self.books_hnsw_m}"
+                f"QDRANT_HNSW_M must be > 0 when set. Got: {self.hnsw_m}"
             )
