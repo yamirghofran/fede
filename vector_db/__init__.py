@@ -10,6 +10,7 @@ from .collections import (
 from .config import QdrantConfig
 from .crud import BaseVectorCRUD
 from .indexer import SceneRecord, ScriptIndexer, SentenceRecord, index_movie
+from .retrieval import SceneResult, ScriptRetriever, SentenceResult, hierarchical_search
 from .schemas import CollectionNames, LineType, ScenePayload, SentencePayload
 
 __all__ = [
@@ -35,4 +36,9 @@ __all__ = [
     "SceneRecord",
     "SentenceRecord",
     "index_movie",
+    # retrieval
+    "ScriptRetriever",
+    "SceneResult",
+    "SentenceResult",
+    "hierarchical_search",
 ]
