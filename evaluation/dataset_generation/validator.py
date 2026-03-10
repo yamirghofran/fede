@@ -17,6 +17,123 @@ class QueryValidator:
     Detects mentions of movie titles, actor names, and other forbidden content.
     """
 
+    # Common words that should be ignored (short stopwords, pronouns, prepositions, etc.)
+    # These are excluded from validation to avoid false positives
+    COMMON_WORDS_BLACKLIST = {
+        "a",
+        "an",
+        "the",
+        "it",
+        "is",
+        "in",
+        "on",
+        "at",
+        "by",
+        "to",
+        "for",
+        "of",
+        "up",
+        "down",
+        "out",
+        "off",
+        "over",
+        "under",
+        "and",
+        "or",
+        "but",
+        "as",
+        "if",
+        "so",
+        "no",
+        "go",
+        "do",
+        "be",
+        "me",
+        "my",
+        "we",
+        "us",
+        "he",
+        "him",
+        "she",
+        "her",
+        "they",
+        "them",
+        "one",
+        "two",
+        "six",
+        "ten",
+        "big",
+        "bad",
+        "new",
+        "old",
+        "red",
+        "yes",
+        "now",
+        "day",
+        "way",
+        "all",
+        "any",
+        "are",
+        "can",
+        "did",
+        "has",
+        "had",
+        "how",
+        "let",
+        "may",
+        "not",
+        "our",
+        "own",
+        "say",
+        "see",
+        "too",
+        "use",
+        "war",
+        "who",
+        "why",
+        "you",
+        "bit",
+        "cut",
+        "end",
+        "eye",
+        "far",
+        "few",
+        "got",
+        "hit",
+        "hot",
+        "job",
+        "joy",
+        "key",
+        "law",
+        "lie",
+        "low",
+        "man",
+        "map",
+        "mix",
+        "net",
+        "pay",
+        "put",
+        "ran",
+        "run",
+        "sad",
+        "set",
+        "sin",
+        "sit",
+        "sun",
+        "tax",
+        "tea",
+        "tie",
+        "top",
+        "try",
+        "van",
+        "war",
+        "win",
+        "yet",
+    }
+
+    # Minimum length for movie titles to be considered in validation
+    MIN_TITLE_LENGTH = 3
+
     def __init__(self, metadata: Dict, strictness: str = "medium"):
         """
         Initialize validator with movie metadata.
@@ -32,6 +149,7 @@ class QueryValidator:
     def _build_forbidden_list(self) -> Dict[str, Set[str]]:
         """
         Build lists of forbidden words from metadata.
+        Filters out short titles and common words to reduce false positives.
 
         Returns:
             Dictionary of forbidden word categories
@@ -44,7 +162,13 @@ class QueryValidator:
             file_info = movie_data.get("file", {})
             title = file_info.get("name", "")
             if title:
-                movie_titles.add(title.lower())
+                title_lower = title.lower()
+                # Skip short titles and common words to reduce false positives
+                if (
+                    len(title_lower) >= self.MIN_TITLE_LENGTH
+                    and title_lower not in self.COMMON_WORDS_BLACKLIST
+                ):
+                    movie_titles.add(title_lower)
 
         # Note: We don't have explicit actor names in metadata
         # If available, we would add them here
@@ -84,16 +208,24 @@ class QueryValidator:
         # Check for partial title mentions
         partial_matches = []
         for token in query_tokens:
-            if token in title_tokens and len(token) > 2:  # Ignore short words
+            # Skip short words and common words (e.g., "the", "a", "an")
+            if (
+                token in title_tokens
+                and len(token) > 2
+                and token not in self.COMMON_WORDS_BLACKLIST
+            ):
                 partial_matches.append(token)
 
-        # Check against forbidden titles (other movies) - full title match only
+        # Check against forbidden titles (other movies) - use word boundaries for exact matching
         other_movie_matches = []
         query_lower = query.lower()
         for title in self.forbidden_words["movie_titles"]:
             if title == movie_title.lower():
                 continue
-            if title in query_lower:
+            # Use word boundary matching to avoid substring false positives
+            # \b matches at word boundaries (e.g., "it" won't match "spirit")
+            pattern = r"\b" + re.escape(title) + r"\b"
+            if re.search(pattern, query_lower, re.IGNORECASE):
                 other_movie_matches.append(title)
 
         # Calculate leakage score
