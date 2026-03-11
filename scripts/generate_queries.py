@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from evaluation.config import (
+from evaluation.dataset_generation.config import (
     CHECKPOINT_INTERVAL,
     CHECKPOINT_PATH,
     ENABLE_VALIDATION,
@@ -27,7 +27,7 @@ from evaluation.config import (
     OUTPUT_PATH,
     TARGET_NUM_QUERIES,
 )
-from evaluation.generator import OpenAIQueryGenerator
+from evaluation.dataset_generation.generator import OpenAIQueryGenerator
 
 
 def main():
@@ -48,11 +48,6 @@ Examples:
   # Start fresh (ignore checkpoint)
   python scripts/generate_queries.py --no-resume
 
-  # Use gpt-4o instead of gpt-4o-mini
-  python scripts/generate_queries.py --model gpt-4o
-
-  # Disable validation for faster generation
-  python scripts/generate_queries.py --no-validation
         """,
     )
 
