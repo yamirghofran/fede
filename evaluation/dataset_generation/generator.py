@@ -12,12 +12,13 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from openai import OpenAI
+from openai import OpenAI, APITimeoutError, RateLimitError, APIConnectionError
 from tqdm import tqdm
 
 from evaluation.dataset_generation.checkpoint_manager import CheckpointManager
 from evaluation.dataset_generation.config import (
     BACKUP_AFTER_EACH_QUERY,
+    BASE_DIR,
     CHECKPOINT_INTERVAL,
     CHECKPOINT_PATH,
     MAX_RETRIES,
@@ -133,10 +134,11 @@ class OpenAIQueryGenerator:
                             time.sleep(2**attempt)
                         continue
 
-            except api_exceptions.ResourceExhausted as e:
+            except (RateLimitError, APITimeoutError, APIConnectionError) as e:
                 logger.error(
                     f"Error during generation (attempt {attempt + 1}/{max_retries}): {e}"
                 )
+                error_str = str(e)
                 if (
                     "rate_limit" in error_str.lower()
                     or "limit" in error_str.lower()
@@ -191,7 +193,8 @@ class OpenAIQueryGenerator:
                     "overview": tmdb_info.get("overview"),
                     "source": source,
                     "file_name": file_name,
-                    "script_path": script_path,
+                    # Store relative path for portability across machines
+                    "script_path": os.path.relpath(script_path, BASE_DIR),
                     "script_size_bytes": len(script_content),
                     "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
                     "model": self.model,
