@@ -116,7 +116,7 @@ def evaluate_batch(
     }
 
 
-def save_evaluation_report(metrics: Dict, output_path: str) -> None:
+def save_metrics_report(metrics: Dict, output_path: str) -> None:
     """Save metrics to evaluation_report.json"""
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2, ensure_ascii=False)
