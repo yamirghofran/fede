@@ -1,5 +1,16 @@
 {
-  c
+  "total_queries": 298,
+  "summary": {
+    "correct_at_5": 157,
+    "correct_at_10": 175,
+    "correct_at_15": 198,
+    "correct_at_20": 205,
+    "accuracy_at_5": 0.5268456375838926,
+    "accuracy_at_10": 0.587248322147651,
+    "accuracy_at_15": 0.6644295302013423,
+    "accuracy_at_20": 0.6879194630872483,
+    "mrr": 0.417,
+    "median_rank": 2
   },
   "failed_queries": {
     "count": 93,
@@ -669,6 +680,6 @@
       "MRR"
     ],
     "methodology": "Mustafa et al. [4] - IJECE Vol. 14, No. 6",
-    "evaluated_at": "2026-03-11T11:15:16.597351Z"
+    "evaluated_at": "2026-03-11T12:00:38.787315Z"
   }
 }
