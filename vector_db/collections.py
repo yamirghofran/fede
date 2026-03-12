@@ -80,10 +80,8 @@ class CollectionManager:
 
     def reset_collection(self, collection_name: CollectionNames) -> None:
         """Delete and recreate a collection, wiping all indexed vectors."""
-        try:
+        if self.client.collection_exists(collection_name=collection_name.value):
             self.client.delete_collection(collection_name=collection_name.value)
-        except Exception:
-            pass
 
         self._collections.pop(collection_name.value, None)
         self._create_collection_if_missing(collection_name.value)

@@ -78,7 +78,7 @@ fede/
 │   └── vector_db_smoke_test.ipynb   # End-to-end smoke test against live Qdrant
 ├── docker-compose.yml      # Qdrant container
 ├── .env.example            # Environment variable template
-└── requirements.txt
+└── pyproject.toml          # Python project metadata and dependencies
 ```
 
 ---
@@ -102,7 +102,7 @@ docker compose ps   # wait until Status shows "healthy"
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ### 3. Configure environment
@@ -135,13 +135,13 @@ All runtime settings are read from environment variables. Copy `.env.example` to
 | `QDRANT_API_KEY` | _(unset)_ | API key — leave unset for local dev |
 | `QDRANT_HTTPS` | `false` | Enable TLS for hosted deployments |
 | `QDRANT_VECTOR_SIZE` | `768` | Must match your embedding model output dimension |
-| `QDRANT_SCRIPTS_ON_DISK` | `false` | Store vectors on disk (set `true` in prod) |
-| `QDRANT_HNSW_ON_DISK` | `false` | Store HNSW graph on disk |
+| `QDRANT_SCRIPTS_ON_DISK` | `true` | Store vectors on disk rather than RAM |
+| `QDRANT_HNSW_ON_DISK` | `true` | Store HNSW graph on disk |
 | `QDRANT_HNSW_M` | `16` | HNSW connectivity parameter |
-| `QDRANT_INT8_QUANTIZATION` | `false` | Enable INT8 scalar quantization (prod only) |
+| `QDRANT_INT8_QUANTIZATION` | `true` | Enable INT8 scalar quantization |
 | `QDRANT_QUANTILE` | `0.99` | Quantization calibration quantile |
 | `QDRANT_QUANT_ALWAYS_RAM` | `true` | Keep quantized vectors in RAM |
-| `QDRANT_TIMEOUT` | `30.0` | Client timeout in seconds |
+| `QDRANT_TIMEOUT` | `10.0` | Client timeout in seconds |
 
 `QdrantConfig` can also be constructed programmatically for environments where `.env` is not used:
 
@@ -455,4 +455,4 @@ See `.env.example` for a fully annotated template. The table below shows the rec
 | `QDRANT_SCRIPTS_ON_DISK` | `false` | `true` |
 | `QDRANT_HNSW_ON_DISK` | `false` | `true` |
 | `QDRANT_INT8_QUANTIZATION` | `false` | `true` |
-| `QDRANT_TIMEOUT` | `30.0` | `30.0` |
+| `QDRANT_TIMEOUT` | `10.0` | `10.0` |

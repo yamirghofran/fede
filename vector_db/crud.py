@@ -63,7 +63,12 @@ class BaseVectorCRUD:
         metadatas: Optional[List[Dict[str, Any]]] = None,
         embeddings: Optional[List[List[float]]] = None,
     ) -> None:
-        """Add multiple items to the collection in batch."""
+        """Add multiple items to the collection in batch.
+
+        Uses upsert semantics: existing points are overwritten rather than
+        raising an error, making this safe to call concurrently and idempotent
+        on re-runs (consistent with the indexer pipeline).
+        """
         if metadatas and len(metadatas) != len(ids):
             raise ValueError("Length of metadatas must match length of ids")
         if embeddings and len(embeddings) != len(ids):
@@ -71,26 +76,15 @@ class BaseVectorCRUD:
         if len(documents) != len(ids):
             raise ValueError("Length of documents must match length of ids")
 
-        existing = self.client.retrieve(
-            collection_name=self.collection_name,
-            ids=ids,
-            with_payload=False,
-            with_vectors=False,
-        )
-        existing_ids = [str(record.id) for record in existing]
-        if existing_ids:
-            raise ValueError(f"Items with IDs already exist: {existing_ids}")
-
-        points = []
-        for idx, id_ in enumerate(ids):
-            points.append(
-                self._make_point(
-                    id=id_,
-                    document=documents[idx],
-                    metadata=metadatas[idx] if metadatas else None,
-                    embedding=embeddings[idx] if embeddings else None,
-                )
+        points = [
+            self._make_point(
+                id=id_,
+                document=documents[idx],
+                metadata=metadatas[idx] if metadatas else None,
+                embedding=embeddings[idx] if embeddings else None,
             )
+            for idx, id_ in enumerate(ids)
+        ]
 
         self.client.upsert(
             collection_name=self.collection_name,

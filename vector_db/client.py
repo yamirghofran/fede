@@ -1,5 +1,6 @@
 """Qdrant client management with singleton pattern."""
 
+import threading
 from typing import Optional
 
 from qdrant_client import QdrantClient
@@ -9,13 +10,14 @@ from .config import QdrantConfig
 # Global client instance for singleton pattern
 _client_instance: Optional[QdrantClient] = None
 _client_config: Optional[QdrantConfig] = None
+_client_lock = threading.Lock()
 
 
 def get_qdrant_client(config: Optional[QdrantConfig] = None) -> QdrantClient:
     """Get Qdrant client instance (singleton pattern).
 
-    This function implements a singleton pattern to ensure only one client
-    instance is created and reused throughout the application lifecycle.
+    This function implements a thread-safe singleton pattern to ensure only one
+    client instance is created and reused throughout the application lifecycle.
 
     Args:
         config: Qdrant configuration. If None, loads from environment.
@@ -32,28 +34,33 @@ def get_qdrant_client(config: Optional[QdrantConfig] = None) -> QdrantClient:
     if _client_instance is not None:
         return _client_instance
 
-    if config is None:
-        config = QdrantConfig.from_env()
+    with _client_lock:
+        # Re-check inside the lock to handle race conditions (double-checked locking).
+        if _client_instance is not None:
+            return _client_instance
 
-    config.validate()
+        if config is None:
+            config = QdrantConfig.from_env()
 
-    try:
-        if config.mode == "local":
-            _client_instance = _create_local_client(config)
-        else:
-            _client_instance = _create_server_client(config)
+        config.validate()
 
-        _validate_connection(_client_instance)
-        _client_config = config
+        try:
+            if config.mode == "local":
+                _client_instance = _create_local_client(config)
+            else:
+                _client_instance = _create_server_client(config)
 
-        return _client_instance
+            _validate_connection(_client_instance)
+            _client_config = config
 
-    except Exception as e:
-        _client_instance = None
-        _client_config = None
-        raise ConnectionError(
-            f"Failed to connect to Qdrant in {config.mode} mode: {str(e)}"
-        ) from e
+            return _client_instance
+
+        except Exception as e:
+            _client_instance = None
+            _client_config = None
+            raise ConnectionError(
+                f"Failed to connect to Qdrant in {config.mode} mode: {str(e)}"
+            ) from e
 
 
 def _create_local_client(config: QdrantConfig) -> QdrantClient:

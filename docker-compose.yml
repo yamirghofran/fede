@@ -1,6 +1,6 @@
 services:
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.9.2
     container_name: fede-qdrant
     restart: unless-stopped
     ports:
