@@ -19,11 +19,10 @@ from sentence_transformers import SentenceTransformer
 from preprocessing.chunker import SceneChunk
 
 from finetuning.config import (
-    DOCUMENT_PREFIX,
     POSITIVE_CLOSE_GAP,
     POSITIVE_MIN_SCORE,
-    QUERY_PREFIX,
 )
+from finetuning.training.model import encode_documents, encode_queries
 
 logger = logging.getLogger(__name__)
 
@@ -70,16 +69,8 @@ class PositiveAssigner:
         if not scenes:
             return None
 
-        query_emb = self._model.encode(
-            QUERY_PREFIX + query,
-            normalize_embeddings=True,
-        )
-        doc_texts = [DOCUMENT_PREFIX + s.text for s in scenes]
-        doc_embs = self._model.encode(
-            doc_texts,
-            normalize_embeddings=True,
-            show_progress_bar=False,
-        )
+        query_emb = encode_queries(self._model, query)
+        doc_embs = encode_documents(self._model, [s.text for s in scenes])
 
         sims = np.dot(doc_embs, query_emb)
 
@@ -116,19 +107,11 @@ class PositiveAssigner:
         if not scenes or not queries:
             return []
 
-        doc_texts = [DOCUMENT_PREFIX + s.text for s in scenes]
-        doc_embs = self._model.encode(
-            doc_texts,
-            normalize_embeddings=True,
-            show_progress_bar=False,
-        )
+        doc_embs = encode_documents(self._model, [s.text for s in scenes])
 
         results: List[PositiveMatch] = []
         for query in queries:
-            query_emb = self._model.encode(
-                QUERY_PREFIX + query,
-                normalize_embeddings=True,
-            )
+            query_emb = encode_queries(self._model, query)
             sims = np.dot(doc_embs, query_emb)
             ranked_idx = np.argsort(-sims)
             best_idx = ranked_idx[0]

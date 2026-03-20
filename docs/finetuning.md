@@ -38,7 +38,7 @@ This document covers the `finetuning/` package: a self-contained pipeline for ge
 
 ## 1. Overview
 
-The base embedding model (`google/gemma-embedding-100m`) was pre-trained on generic web text.  It produces reasonable similarity scores out of the box, but has never seen the specific mismatch at the core of FEDE: natural-language movie descriptions on the query side vs screenplay-formatted scene text on the document side.
+The base embedding model (`google/embeddinggemma-300m`) was pre-trained on generic web text.  It produces reasonable similarity scores out of the box, but has never seen the specific mismatch at the core of FEDE: natural-language movie descriptions on the query side vs screenplay-formatted scene text on the document side.
 
 Fine-tuning teaches the model this mapping through contrastive learning on synthetically generated query-scene pairs.  Training proceeds in two rounds:
 
@@ -154,17 +154,18 @@ All settings live in `finetuning/config.py`.  The most important ones:
 
 | Setting | Default | Description |
 |---|---|---|
-| `EMBEDDING_MODEL_ID` | `google/gemma-embedding-100m` | HuggingFace model ID or local path |
+| `EMBEDDING_MODEL_ID` | `google/embeddinggemma-300m` | HuggingFace model ID or local path |
+| `HF_TOKEN` |  | (Optional) HuggingFace auth token if the embedding model is gated/private |
 | `VECTOR_SIZE` | `768` | Output embedding dimension |
-| `QUERY_PREFIX` | `"Represent this query for retrieving relevant movie scenes: "` | Prepended to queries before encoding |
-| `DOCUMENT_PREFIX` | `""` | Prepended to documents (empty for EmbeddingGemma) |
+| `QUERY_PREFIX` | `""` | Not used — `embeddinggemma-300m` applies prompts internally via `encode_query()` / `encode_document()` |
+| `DOCUMENT_PREFIX` | `""` | Not used (see above) |
 
 ### LLM (Synthetic Data Generation)
 
 | Setting | Default | Description |
 |---|---|---|
 | `OPENROUTER_API_KEY_ENV` | `OPENROUTER_API_KEY` | Env var name for the API key |
-| `LLM_MODEL` | `google/gemini-2.0-flash-lite` | Override with `FEDE_LLM_MODEL` env var |
+| `LLM_MODEL` | `google/gemini-2.5-flash-lite` | Override with `FEDE_LLM_MODEL` env var |
 | `LLM_RATE_LIMIT_DELAY` | `4` | Seconds between LLM calls |
 | `LLM_TEMPERATURE` | `0.8` | Generation temperature |
 
@@ -434,6 +435,8 @@ The evaluation pipeline accepts any object with a `.retrieve(query, top_k)` meth
 | `OPENROUTER_API_KEY` | API key for OpenRouter (required for dataset generation) |
 | `FEDE_LLM_MODEL` | Override the LLM model used for query generation (default: `google/gemini-2.0-flash-lite`) |
 | `QDRANT_*` | All Qdrant settings — see `docs/vector_store.md` for the full list |
+
+Importing `finetuning.config` loads the project-root **`.env`** via `python-dotenv`, so you can keep `OPENROUTER_API_KEY` in `.env` without exporting it in the shell. You can still override with `export` or `--api-key`.
 
 ---
 

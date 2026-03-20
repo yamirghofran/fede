@@ -21,8 +21,6 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from sentence_transformers import SentenceTransformer
-
 from finetuning.config import (
     CHECKPOINT_INTERVAL,
     EMBEDDING_MODEL_ID,
@@ -31,6 +29,7 @@ from finetuning.config import (
     RANDOM_NEGATIVES_PER_QUERY,
     TOP_SCENES_FOR_SUMMARY,
 )
+from finetuning.training.model import load_model
 from finetuning.corpus.scene_corpus import MovieEntry, build_scene_corpus
 from finetuning.dataset.negative_miner import sample_random_negatives
 from finetuning.dataset.positive_assigner import PositiveAssigner
@@ -103,7 +102,7 @@ class DatasetBuilder:
     def _ensure_assigner(self) -> PositiveAssigner:
         if self._assigner is None:
             logger.info("Loading embedding model %s …", self._model_id)
-            model = SentenceTransformer(self._model_id)
+            model = load_model(self._model_id)
             self._assigner = PositiveAssigner(model)
         return self._assigner
 

@@ -10,11 +10,15 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # ---------------------------------------------------------------------------
 # Project root — resolved relative to this file so it works regardless of cwd
 # ---------------------------------------------------------------------------
 _THIS_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = _THIS_DIR.parent
+
+load_dotenv(PROJECT_ROOT / ".env")
 
 # ---------------------------------------------------------------------------
 # Data paths
@@ -27,11 +31,12 @@ FINETUNING_DATA_DIR = DATA_DIR / "finetuning"
 # ---------------------------------------------------------------------------
 # Embedding model
 # ---------------------------------------------------------------------------
-EMBEDDING_MODEL_ID = "google/gemma-embedding-100m"
+EMBEDDING_MODEL_ID = "google/embeddinggemma-300m"
 VECTOR_SIZE = 768
 
-# Task prefixes (EmbeddingGemma convention)
-QUERY_PREFIX = "Represent this query for retrieving relevant movie scenes: "
+# EmbeddingGemma-300m handles query/document prompts internally via
+# encode_query() / encode_document() — no manual prefix prepending required.
+QUERY_PREFIX = ""
 DOCUMENT_PREFIX = ""
 
 # ---------------------------------------------------------------------------
@@ -39,7 +44,7 @@ DOCUMENT_PREFIX = ""
 # ---------------------------------------------------------------------------
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_API_KEY_ENV = "OPENROUTER_API_KEY"
-LLM_MODEL = os.getenv("FEDE_LLM_MODEL", "google/gemini-2.0-flash-lite")
+LLM_MODEL = os.getenv("FEDE_LLM_MODEL", "google/gemini-2.5-flash-lite")
 
 LLM_MAX_RETRIES = 3
 LLM_RATE_LIMIT_DELAY = 4  # seconds between calls

@@ -6,6 +6,7 @@ applies the query / document task prefixes defined in ``finetuning.config``.
 
 from __future__ import annotations
 
+import os
 import logging
 from typing import List, Optional, Union
 
@@ -42,6 +43,15 @@ def load_model(
     logger.info("Loading embedding model: %s", model_id)
 
     kwargs = {}
+    # Some HF model repos are gated/private; use an auth token when provided.
+    hf_token = (
+        os.getenv("HF_TOKEN")
+        or os.getenv("HUGGINGFACE_HUB_TOKEN")
+        or os.getenv("HUGGINGFACEHUB_API_TOKEN")
+    )
+    if hf_token:
+        # SentenceTransformer passes this through to HuggingFace Hub.
+        kwargs["token"] = hf_token
     if device is not None:
         kwargs["device"] = device
 
@@ -56,16 +66,24 @@ def encode_queries(
     batch_size: int = 64,
     show_progress: bool = False,
 ) -> np.ndarray:
-    """Encode query text(s) with the query task prefix.
+    """Encode query text(s) using the model's query prompt.
 
-    Prepends ``QUERY_PREFIX`` to every input and truncates to
-    ``MAX_QUERY_LENGTH`` tokens.
+    Uses ``encode_query`` when available (EmbeddingGemma-style models that
+    declare query/document prompts internally).  Falls back to plain
+    ``encode`` for models that do not define named prompts.
     """
     if isinstance(texts, str):
         texts = [texts]
-    prefixed = [QUERY_PREFIX + t for t in texts]
+    encode_fn = getattr(model, "encode_query", None)
+    if callable(encode_fn):
+        return np.array(encode_fn(
+            texts,
+            normalize_embeddings=True,
+            batch_size=batch_size,
+            show_progress_bar=show_progress,
+        ))
     return model.encode(
-        prefixed,
+        texts,
         normalize_embeddings=True,
         batch_size=batch_size,
         show_progress_bar=show_progress,
@@ -78,16 +96,23 @@ def encode_documents(
     batch_size: int = 64,
     show_progress: bool = False,
 ) -> np.ndarray:
-    """Encode document text(s) with the document task prefix.
+    """Encode document text(s) using the model's document prompt.
 
-    Prepends ``DOCUMENT_PREFIX`` (empty string by default for
-    EmbeddingGemma) and truncates to ``MAX_DOCUMENT_LENGTH`` tokens.
+    Uses ``encode_document`` when available (EmbeddingGemma-style models).
+    Falls back to plain ``encode`` for models without named prompts.
     """
     if isinstance(texts, str):
         texts = [texts]
-    prefixed = [DOCUMENT_PREFIX + t for t in texts]
+    encode_fn = getattr(model, "encode_document", None)
+    if callable(encode_fn):
+        return np.array(encode_fn(
+            texts,
+            normalize_embeddings=True,
+            batch_size=batch_size,
+            show_progress_bar=show_progress,
+        ))
     return model.encode(
-        prefixed,
+        texts,
         normalize_embeddings=True,
         batch_size=batch_size,
         show_progress_bar=show_progress,
