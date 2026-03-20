@@ -156,6 +156,10 @@ All settings live in `finetuning/config.py`.  The most important ones:
 |---|---|---|
 | `EMBEDDING_MODEL_ID` | `google/embeddinggemma-300m` | HuggingFace model ID or local path |
 | `HF_TOKEN` |  | (Optional) HuggingFace auth token if the embedding model is gated/private |
+| `FINETUNING_EMBED_DEVICE` | `cpu` | Device for embedding model during dataset build. Use `cpu` on Apple Silicon to avoid MPS OOM |
+| `FINETUNING_EMBED_FP16` | `true` | Load embedding model in float16 (~600 MB vs ~1.2 GB) |
+| `FINETUNING_ENCODE_BATCH_SIZE` | `8` | Encode batch size during dataset build. Smaller = less peak activation memory |
+| `TOKENIZERS_PARALLELISM` | `false` | Prevents joblib from forking worker processes (each fork copies the model into RAM) |
 | `VECTOR_SIZE` | `768` | Output embedding dimension |
 | `QUERY_PREFIX` | `""` | Not used — `embeddinggemma-300m` applies prompts internally via `encode_query()` / `encode_document()` |
 | `DOCUMENT_PREFIX` | `""` | Not used (see above) |

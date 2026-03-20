@@ -39,6 +39,20 @@ VECTOR_SIZE = 768
 QUERY_PREFIX = ""
 DOCUMENT_PREFIX = ""
 
+# Device for the embedding model during dataset building.
+# Default is "cpu" to avoid OOM on Apple Silicon MPS (unified RAM).
+# Set to "mps" or "cuda" only if you have enough dedicated VRAM.
+FINETUNING_EMBED_DEVICE = os.getenv("FINETUNING_EMBED_DEVICE", "cpu")
+
+# Batch size for encode_queries / encode_documents during dataset building.
+# Keep small (8–16) to limit peak activation memory on CPU. Has no effect on
+# embedding quality.
+FINETUNING_ENCODE_BATCH_SIZE = int(os.getenv("FINETUNING_ENCODE_BATCH_SIZE", "8"))
+
+# Load the embedding model in float16 to halve weight memory (~600 MB vs ~1.2 GB).
+# Disable only if you see NaN embeddings (very unlikely for inference).
+FINETUNING_EMBED_FP16 = os.getenv("FINETUNING_EMBED_FP16", "true").lower() in ("1", "true", "yes")
+
 # ---------------------------------------------------------------------------
 # LLM — used only for synthetic data generation, not for retrieval
 # ---------------------------------------------------------------------------
@@ -47,9 +61,13 @@ OPENROUTER_API_KEY_ENV = "OPENROUTER_API_KEY"
 LLM_MODEL = os.getenv("FEDE_LLM_MODEL", "google/gemini-2.5-flash-lite")
 
 LLM_MAX_RETRIES = 3
-LLM_RATE_LIMIT_DELAY = 4  # seconds between calls
+# Minimum seconds between successive LLM API calls (global, across all coroutines).
+# 1 s ≈ 60 req/min — safe for most OpenRouter tiers. Raise if you hit 429s.
+LLM_RATE_LIMIT_DELAY = float(os.getenv("FEDE_LLM_RATE_DELAY", "1"))
 LLM_TEMPERATURE = 0.8
 LLM_MAX_TOKENS = 1024
+# Max movies processed concurrently (each makes ~4 LLM calls).
+LLM_CONCURRENCY = int(os.getenv("FEDE_LLM_CONCURRENCY", "5"))
 
 # ---------------------------------------------------------------------------
 # Dataset generation targets

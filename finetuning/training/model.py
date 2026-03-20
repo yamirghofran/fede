@@ -11,11 +11,14 @@ import logging
 from typing import List, Optional, Union
 
 import numpy as np
+import torch
 from sentence_transformers import SentenceTransformer
 
 from finetuning.config import (
     DOCUMENT_PREFIX,
     EMBEDDING_MODEL_ID,
+    FINETUNING_EMBED_FP16,
+    FINETUNING_ENCODE_BATCH_SIZE,
     MAX_DOCUMENT_LENGTH,
     MAX_QUERY_LENGTH,
     QUERY_PREFIX,
@@ -43,17 +46,17 @@ def load_model(
     logger.info("Loading embedding model: %s", model_id)
 
     kwargs = {}
-    # Some HF model repos are gated/private; use an auth token when provided.
     hf_token = (
         os.getenv("HF_TOKEN")
         or os.getenv("HUGGINGFACE_HUB_TOKEN")
         or os.getenv("HUGGINGFACEHUB_API_TOKEN")
     )
     if hf_token:
-        # SentenceTransformer passes this through to HuggingFace Hub.
         kwargs["token"] = hf_token
     if device is not None:
         kwargs["device"] = device
+    if FINETUNING_EMBED_FP16:
+        kwargs["model_kwargs"] = {"torch_dtype": torch.float16}
 
     model = SentenceTransformer(model_id, **kwargs)
     logger.info("Model loaded — device=%s, dim=%d", model.device, model.get_sentence_embedding_dimension())
@@ -63,57 +66,64 @@ def load_model(
 def encode_queries(
     model: SentenceTransformer,
     texts: Union[str, List[str]],
-    batch_size: int = 64,
+    batch_size: int = FINETUNING_ENCODE_BATCH_SIZE,
     show_progress: bool = False,
 ) -> np.ndarray:
     """Encode query text(s) using the model's query prompt.
 
+    Returns shape ``(768,)`` for a single string, ``(N, 768)`` for a list.
     Uses ``encode_query`` when available (EmbeddingGemma-style models that
-    declare query/document prompts internally).  Falls back to plain
-    ``encode`` for models that do not define named prompts.
+    declare query/document prompts internally), falls back to plain ``encode``.
     """
-    if isinstance(texts, str):
+    single = isinstance(texts, str)
+    if single:
         texts = [texts]
     encode_fn = getattr(model, "encode_query", None)
     if callable(encode_fn):
-        return np.array(encode_fn(
+        result = np.array(encode_fn(
             texts,
             normalize_embeddings=True,
             batch_size=batch_size,
             show_progress_bar=show_progress,
         ))
-    return model.encode(
-        texts,
-        normalize_embeddings=True,
-        batch_size=batch_size,
-        show_progress_bar=show_progress,
-    )
+    else:
+        result = np.array(model.encode(
+            texts,
+            normalize_embeddings=True,
+            batch_size=batch_size,
+            show_progress_bar=show_progress,
+        ))
+    return result[0] if single else result
 
 
 def encode_documents(
     model: SentenceTransformer,
     texts: Union[str, List[str]],
-    batch_size: int = 64,
+    batch_size: int = FINETUNING_ENCODE_BATCH_SIZE,
     show_progress: bool = False,
 ) -> np.ndarray:
     """Encode document text(s) using the model's document prompt.
 
-    Uses ``encode_document`` when available (EmbeddingGemma-style models).
-    Falls back to plain ``encode`` for models without named prompts.
+    Returns shape ``(768,)`` for a single string, ``(N, 768)`` for a list.
+    Uses ``encode_document`` when available (EmbeddingGemma-style models),
+    falls back to plain ``encode``.
     """
-    if isinstance(texts, str):
+    single = isinstance(texts, str)
+    if single:
         texts = [texts]
     encode_fn = getattr(model, "encode_document", None)
     if callable(encode_fn):
-        return np.array(encode_fn(
+        result = np.array(encode_fn(
             texts,
             normalize_embeddings=True,
             batch_size=batch_size,
             show_progress_bar=show_progress,
         ))
-    return model.encode(
-        texts,
-        normalize_embeddings=True,
-        batch_size=batch_size,
-        show_progress_bar=show_progress,
-    )
+    else:
+        result = np.array(model.encode(
+            texts,
+            normalize_embeddings=True,
+            batch_size=batch_size,
+            show_progress_bar=show_progress,
+        ))
+    return result[0] if single else result

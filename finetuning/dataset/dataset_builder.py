@@ -25,6 +25,7 @@ from finetuning.config import (
     CHECKPOINT_INTERVAL,
     EMBEDDING_MODEL_ID,
     FINETUNING_DATA_DIR,
+    FINETUNING_EMBED_DEVICE,
     QUERIES_PER_MOVIE_SYNOPSIS,
     RANDOM_NEGATIVES_PER_QUERY,
     TOP_SCENES_FOR_SUMMARY,
@@ -58,6 +59,19 @@ def _count_lines(path: Path) -> int:
         return 0
     with open(path, "r", encoding="utf-8") as f:
         return sum(1 for _ in f)
+
+
+def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
+    """Read all rows from a JSONL file."""
+    if not path.exists():
+        return []
+    rows = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
+    return rows
 
 
 # ---------------------------------------------------------------------------
@@ -101,8 +115,8 @@ class DatasetBuilder:
 
     def _ensure_assigner(self) -> PositiveAssigner:
         if self._assigner is None:
-            logger.info("Loading embedding model %s …", self._model_id)
-            model = load_model(self._model_id)
+            logger.info("Loading embedding model %s on %s …", self._model_id, FINETUNING_EMBED_DEVICE)
+            model = load_model(self._model_id, device=FINETUNING_EMBED_DEVICE)
             self._assigner = PositiveAssigner(model)
         return self._assigner
 
@@ -232,8 +246,9 @@ class DatasetBuilder:
                 processed = set(ckpt.get("processed_movies", []))
                 logger.info("Resuming — %d movies already processed", len(processed))
 
-        # Phase 1: Type A + B for each movie
-        all_ab_rows: List[Dict[str, Any]] = []
+        # Phase 1: Type A + B for each movie — rows written to disk immediately,
+        # not buffered in memory, so the process footprint stays flat.
+        ab_pairs_written = 0
         for i, mid in enumerate(movie_ids):
             if mid in processed:
                 continue
@@ -242,16 +257,19 @@ class DatasetBuilder:
             logger.info("[%d/%d] Generating queries for %s", i + 1, len(movie_ids), entry.movie_title)
 
             rows = self._generate_for_movie(mid, entry)
-            all_ab_rows.extend(rows)
+            ab_pairs_written += len(rows)
             _append_jsonl(output, rows)
             processed.add(mid)
 
             if (i + 1) % CHECKPOINT_INTERVAL == 0:
-                save_checkpoint({"processed_movies": list(processed), "ab_pairs": len(all_ab_rows)})
-                logger.info("Checkpoint saved — %d movies, %d pairs so far", len(processed), len(all_ab_rows))
+                save_checkpoint({"processed_movies": list(processed), "ab_pairs": ab_pairs_written})
+                logger.info("Checkpoint saved — %d movies, %d pairs so far", len(processed), ab_pairs_written)
 
-        # Phase 2: Type C paraphrases (from a sample of AB pairs)
+        # Phase 2: Type C paraphrases — read source pairs back from disk so
+        # Phase 1 rows don't need to be held in RAM during the whole run.
+        all_ab_rows = _read_jsonl(output)
         paraphrase_source = all_ab_rows[:len(all_ab_rows) // 3]
+        del all_ab_rows  # free before the paraphrase LLM loop
         logger.info("Generating paraphrases from %d source pairs …", len(paraphrase_source))
         paraphrase_rows = self._generate_paraphrases(paraphrase_source)
         _append_jsonl(output, paraphrase_rows)
@@ -260,7 +278,7 @@ class DatasetBuilder:
         logger.info("Dataset complete: %d total pairs written to %s", total, output)
         save_checkpoint({
             "processed_movies": list(processed),
-            "ab_pairs": len(all_ab_rows),
+            "ab_pairs": ab_pairs_written,
             "paraphrase_pairs": len(paraphrase_rows),
             "total_pairs": total,
             "status": "complete",
