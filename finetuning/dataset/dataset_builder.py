@@ -335,4 +335,18 @@ class DatasetBuilder:
             The path to the written JSONL file.
         """
         output = output_path or (FINETUNING_DATA_DIR / "training_pairs_r1.jsonl")
-        return asyncio.run(self._build_async(output, resume))
+        coro = self._build_async(output, resume)
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is not None and loop.is_running():
+            # Inside an already-running loop (e.g. Jupyter / IPython).
+            # nest_asyncio patches the loop to allow re-entrant calls.
+            import nest_asyncio  # type: ignore[import]
+            nest_asyncio.apply(loop)
+            return loop.run_until_complete(coro)
+
+        return asyncio.run(coro)
