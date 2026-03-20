@@ -170,7 +170,8 @@ All settings live in `finetuning/config.py`.  The most important ones:
 |---|---|---|
 | `OPENROUTER_API_KEY_ENV` | `OPENROUTER_API_KEY` | Env var name for the API key |
 | `LLM_MODEL` | `google/gemini-2.5-flash-lite` | Override with `FEDE_LLM_MODEL` env var |
-| `LLM_RATE_LIMIT_DELAY` | `4` | Seconds between LLM calls |
+| `LLM_RATE_LIMIT_DELAY` | `1` | Min seconds between successive LLM calls (global). Override with `FEDE_LLM_RATE_DELAY`. Raise to `2`–`4` if you see 429s. |
+| `LLM_CONCURRENCY` | `5` | Movies processed concurrently. Override with `FEDE_LLM_CONCURRENCY`. |
 | `LLM_TEMPERATURE` | `0.8` | Generation temperature |
 
 ### Dataset Targets
@@ -214,6 +215,8 @@ python -m finetuning.scripts.build_dataset --movies 1000
 ```
 
 This parses tagged scripts, generates synthetic queries via the LLM, assigns positive scenes, adds random negatives, and writes the result to `data/finetuning/training_pairs_r1.jsonl`.
+
+**Concurrency:** Movies are processed `LLM_CONCURRENCY` (default 5) at a time using `asyncio`.  A shared rate-limiter enforces a minimum interval of `LLM_RATE_LIMIT_DELAY` (default 1 s) between successive API calls regardless of concurrency level.  This overlaps API latency across movies, giving a ~4–5× wall-clock speedup over sequential processing.  If you see 429 errors, raise `FEDE_LLM_RATE_DELAY` to `2` or `4` in your `.env`.
 
 The process checkpoints every 50 movies.  If interrupted, re-run the same command — it resumes from the checkpoint automatically.
 

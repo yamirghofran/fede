@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import random
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -64,6 +65,8 @@ def build_scene_corpus(
     metadata_path: Optional[Path] = None,
     scripts_dir: Optional[Path] = None,
     min_scene_words: int = MIN_SCENE_WORDS,
+    shuffle: bool = True,
+    seed: int = 42,
 ) -> Dict[str, MovieEntry]:
     """Parse all tagged scripts into a movie-keyed scene corpus.
 
@@ -72,6 +75,10 @@ def build_scene_corpus(
         metadata_path: Override for ``clean_parsed_meta.json`` location.
         scripts_dir: Override for the tagged-scripts directory.
         min_scene_words: Drop scenes with fewer words than this.
+        shuffle: Randomise the order before applying ``max_movies`` so
+            the training/eval split is not biased by title alphabet.
+            Defaults to ``True``.
+        seed: RNG seed for reproducibility (same seed → same split).
 
     Returns:
         ``{movie_id: MovieEntry}`` mapping.  Movies whose tagged script
@@ -79,10 +86,15 @@ def build_scene_corpus(
     """
     meta = load_metadata(metadata_path)
     scripts_dir = scripts_dir or TAGGED_SCRIPTS_DIR
+
+    meta_items = list(meta.items())
+    if shuffle:
+        random.Random(seed).shuffle(meta_items)
+
     corpus: Dict[str, MovieEntry] = {}
     loaded = 0
 
-    for key, entry in meta.items():
+    for key, entry in meta_items:
         if max_movies is not None and loaded >= max_movies:
             break
 
