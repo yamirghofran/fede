@@ -55,19 +55,52 @@ FINETUNING_EMBED_FP16 = os.getenv("FINETUNING_EMBED_FP16", "true").lower() in ("
 
 # ---------------------------------------------------------------------------
 # LLM — used only for synthetic data generation, not for retrieval
+#
+# Two supported providers (set FEDE_LLM_PROVIDER in .env):
+#
+#   "openrouter"  — routes through openrouter.ai (default).
+#                   Requires OPENROUTER_API_KEY.
+#                   Cold-start latency common; ~60 req/min free tier.
+#
+#   "gemini"      — Google AI Studio direct API (OpenAI-compatible endpoint).
+#                   Requires GEMINI_API_KEY.
+#                   No cold starts; ~1-3 s latency per call.
+#                   Free tier: 15 RPM → set FEDE_LLM_RATE_DELAY=4
+#                   Paid tier: 2000 RPM → set FEDE_LLM_RATE_DELAY=0.05
 # ---------------------------------------------------------------------------
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+OPENROUTER_BASE_URL  = "https://openrouter.ai/api/v1"
 OPENROUTER_API_KEY_ENV = "OPENROUTER_API_KEY"
-LLM_MODEL = os.getenv("FEDE_LLM_MODEL", "google/gemini-2.5-flash-lite")
+
+GEMINI_BASE_URL      = "https://generativelanguage.googleapis.com/v1beta/openai/"
+GEMINI_API_KEY_ENV   = "GEMINI_API_KEY"
+
+_PROVIDER = os.getenv("FEDE_LLM_PROVIDER", "openrouter").lower()
+
+if _PROVIDER == "gemini":
+    LLM_BASE_URL     = GEMINI_BASE_URL
+    LLM_API_KEY_ENV  = GEMINI_API_KEY_ENV
+    LLM_MODEL        = os.getenv("FEDE_LLM_MODEL", "gemini-2.0-flash-lite")
+    # Free tier default: 15 RPM = 1 req / 4 s.
+    # If billing is enabled on your Google account, lower this to 0.05.
+    _default_rate    = "4"
+else:
+    LLM_BASE_URL     = OPENROUTER_BASE_URL
+    LLM_API_KEY_ENV  = OPENROUTER_API_KEY_ENV
+    LLM_MODEL        = os.getenv("FEDE_LLM_MODEL", "google/gemini-2.5-flash-lite")
+    _default_rate    = "1"
 
 LLM_MAX_RETRIES = 3
-# Minimum seconds between successive LLM API calls (global, across all coroutines).
-# 1 s ≈ 60 req/min — safe for most OpenRouter tiers. Raise if you hit 429s.
-LLM_RATE_LIMIT_DELAY = float(os.getenv("FEDE_LLM_RATE_DELAY", "1"))
+LLM_RATE_LIMIT_DELAY = float(os.getenv("FEDE_LLM_RATE_DELAY", _default_rate))
 LLM_TEMPERATURE = 0.8
-LLM_MAX_TOKENS = 1024
-# Max movies processed concurrently (each makes ~4 LLM calls).
-LLM_CONCURRENCY = int(os.getenv("FEDE_LLM_CONCURRENCY", "5"))
+LLM_MAX_TOKENS  = 1024
+LLM_CONCURRENCY = int(os.getenv("FEDE_LLM_CONCURRENCY", "10"))
+
+# ---------------------------------------------------------------------------
+# Gemini Batch API — for bulk dataset generation (50% cheaper, no rate issues)
+# ---------------------------------------------------------------------------
+GEMINI_BATCH_MODEL = os.getenv("FEDE_BATCH_MODEL", "gemini-2.0-flash-lite")
+GEMINI_BATCH_POLL_INTERVAL = int(os.getenv("FEDE_BATCH_POLL_INTERVAL", "30"))
 
 # ---------------------------------------------------------------------------
 # Dataset generation targets
