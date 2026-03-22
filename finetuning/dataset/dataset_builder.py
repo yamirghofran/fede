@@ -133,8 +133,19 @@ class DatasetBuilder:
         """Generate raw query rows for one movie (no embedding needed)."""
         rows: List[Dict[str, Any]] = []
 
+        has_overview = bool(entry.overview and entry.overview.strip())
+        n_scenes = len(entry.scenes)
+        if not has_overview and n_scenes == 0:
+            logger.warning(
+                "Movie '%s' has no overview and no scenes — nothing to generate",
+                entry.movie_title,
+            )
+            return rows
+        if not has_overview:
+            logger.info("  No overview for '%s' — skipping synopsis queries", entry.movie_title)
+
         # Type A: synopsis queries
-        if entry.overview:
+        if has_overview:
             queries = qgen.generate_synopsis_queries(
                 entry.overview, entry.movie_title, n=QUERIES_PER_MOVIE_SYNOPSIS,
             )
@@ -205,11 +216,14 @@ class DatasetBuilder:
         qgen = QueryGenerator(api_key=self._api_key)
         queries_written = _count_lines(output)
 
+        total = len(movie_ids)
+        start_offset = total - len(todo)
+
         for i, mid in enumerate(todo):
             entry = corpus[mid]
             logger.info(
                 "[%d/%d] Generating queries for %s",
-                len(processed) + i + 1, len(movie_ids), entry.movie_title,
+                start_offset + i + 1, total, entry.movie_title,
             )
 
             rows = self._generate_queries_for_movie(mid, entry, qgen)
@@ -253,11 +267,15 @@ class DatasetBuilder:
         self,
         queries_path: Optional[Path] = None,
         output_path: Optional[Path] = None,
+        resume: bool = True,
     ) -> Path:
         """Stage 2: Read raw queries, assign positives via embedding, sample negatives.
 
         Loads the embedding model, runs ``PositiveAssigner`` for Type A
         queries, and writes the final training-pair JSONL.
+
+        Writes pairs incrementally per movie. Safe to interrupt and resume —
+        already-processed movies (detected from the output file) are skipped.
         """
         from finetuning.training.model import load_model
         from finetuning.dataset.positive_assigner import PositiveAssigner
@@ -272,6 +290,16 @@ class DatasetBuilder:
                 f"Raw queries file not found: {queries_path}. Run generate_queries() first."
             )
 
+        # Resume: detect movies already written to the output file
+        done_movies: Set[str] = set()
+        if resume and output.exists():
+            done_movies = _movie_ids_in_jsonl(output)
+            if done_movies:
+                logger.info(
+                    "Resuming Stage 2: %d movies already in %s — skipping them",
+                    len(done_movies), output.name,
+                )
+
         # Load embedding model
         logger.info("Loading embedding model %s on %s …", self._model_id, FINETUNING_EMBED_DEVICE)
         emb_model = load_model(self._model_id, device=FINETUNING_EMBED_DEVICE)
@@ -283,18 +311,22 @@ class DatasetBuilder:
         for row in raw_rows:
             by_movie.setdefault(row["movie_id"], []).append(row)
 
+        todo_movies = {mid: rows for mid, rows in by_movie.items() if mid not in done_movies}
         logger.info(
-            "Assembling pairs: %d queries across %d movies",
-            len(raw_rows), len(by_movie),
+            "Assembling pairs: %d queries across %d movies (%d already done)",
+            sum(len(r) for r in todo_movies.values()), len(todo_movies), len(done_movies),
         )
 
-        pairs: List[Dict[str, Any]] = []
+        total_movies = len(by_movie)
+        pairs_written = _count_lines(output)
 
-        for movie_id, query_rows in by_movie.items():
+        for idx, (movie_id, query_rows) in enumerate(todo_movies.items()):
             if movie_id not in corpus:
                 logger.warning("Movie %s not in corpus — skipping", movie_id)
                 continue
             entry = corpus[movie_id]
+
+            movie_pairs: List[Dict[str, Any]] = []
 
             # Separate Type A (synopsis) and Type B (scene_summary) queries
             synopsis_queries = [r["query"] for r in query_rows if r["query_type"] == "synopsis"]
@@ -308,7 +340,7 @@ class DatasetBuilder:
                         movie_id, corpus, n=RANDOM_NEGATIVES_PER_QUERY,
                     )
                     for pos in match.positives:
-                        pairs.append({
+                        movie_pairs.append({
                             "anchor": match.query,
                             "positive": pos.text,
                             "negatives": negatives,
@@ -321,14 +353,14 @@ class DatasetBuilder:
             sorted_scenes = sorted(entry.scenes, key=lambda s: len(s.text), reverse=True)
             top_scenes = sorted_scenes[:TOP_SCENES_FOR_SUMMARY]
             for sr in scene_rows:
-                idx = sr.get("scene_idx")
-                if idx is None or idx >= len(top_scenes):
+                scene_idx = sr.get("scene_idx")
+                if scene_idx is None or scene_idx >= len(top_scenes):
                     continue
-                scene = top_scenes[idx]
+                scene = top_scenes[scene_idx]
                 negatives = sample_random_negatives(
                     movie_id, corpus, n=RANDOM_NEGATIVES_PER_QUERY,
                 )
-                pairs.append({
+                movie_pairs.append({
                     "anchor": sr["query"],
                     "positive": scene.text,
                     "negatives": negatives,
@@ -337,22 +369,24 @@ class DatasetBuilder:
                     "query_type": "scene_summary",
                 })
 
-            if len(pairs) % 500 == 0 and pairs:
-                logger.info("  %d pairs assembled so far …", len(pairs))
+            # Write this movie's pairs immediately (incremental, resumable)
+            if movie_pairs:
+                _append_jsonl(output, movie_pairs)
+                pairs_written += len(movie_pairs)
 
-        # Write all pairs
-        output.parent.mkdir(parents=True, exist_ok=True)
-        with open(output, "w", encoding="utf-8") as f:
-            for row in pairs:
-                f.write(json.dumps(row, ensure_ascii=False) + "\n")
+            if (idx + 1) % 50 == 0:
+                logger.info(
+                    "  [%d/%d] %d pairs written so far …",
+                    len(done_movies) + idx + 1, total_movies, pairs_written,
+                )
 
-        logger.info("Stage 2 complete: %d training pairs → %s", len(pairs), output)
+        logger.info("Stage 2 complete: %d training pairs → %s", pairs_written, output)
 
         # Update checkpoint
-        processed_movies = {p["movie_id"] for p in pairs}
+        all_done = done_movies | set(todo_movies.keys())
         save_checkpoint({
-            "processed_movies": list(processed_movies),
-            "ab_pairs": len(pairs),
+            "processed_movies": list(all_done),
+            "ab_pairs": pairs_written,
             "status": "complete",
         })
 
