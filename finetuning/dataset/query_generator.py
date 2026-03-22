@@ -12,6 +12,9 @@ training queries:
 
 All three share a single ``QueryGenerator`` class that owns the LLM client,
 retry logic, rate-limit handling, checkpointing, and leakage detection.
+
+Where possible, structured output (Pydantic models via the OpenAI beta
+``parse`` endpoint) is used to guarantee valid JSON responses from the LLM.
 """
 
 from __future__ import annotations
@@ -23,6 +26,8 @@ import re
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
+
+from pydantic import BaseModel
 
 from openai import (
     APIConnectionError,
@@ -47,6 +52,26 @@ from finetuning.config import (
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Pydantic response schemas (used with client.beta.chat.completions.parse)
+# ---------------------------------------------------------------------------
+
+class SynopsisQueries(BaseModel):
+    queries: List[str]
+
+
+class SceneSummary(BaseModel):
+    query: str
+    is_usable: bool
+    contains_title: bool
+    contains_character_name: bool
+    too_generic: bool
+
+
+class Paraphrases(BaseModel):
+    paraphrases: List[str]
+
+
+# ---------------------------------------------------------------------------
 # Prompts
 # ---------------------------------------------------------------------------
 
@@ -62,8 +87,7 @@ Requirements for each query:
 - Use only generic wording: do NOT use the film title, character names, actor names, or other proper nouns taken from the synopsis.
 - No dialogue, no quotation marks, no "movie about" meta-phrasing unless unavoidable.
 
-Output must be valid JSON only (no markdown fences, no commentary). Use exactly this shape with exactly {n} strings:
-{{"queries": ["...", "..."]}}
+Return exactly {n} queries.
 
 Synopsis:
 {synopsis}"""
@@ -89,10 +113,7 @@ Rules:
 - Make it distinctive but natural.
 - Avoid spoilers unless necessary to preserve the meaning of the scene.
 
-If the scene is too generic to form a useful retrieval query, output only:
-SKIP
-
-Return only the final query or SKIP.
+If the scene is too generic to form a useful retrieval query, set is_usable to false.
 
 Scene:
 {scene_text}"""
@@ -107,8 +128,7 @@ Rules:
 - One sentence per rewrite.
 - Vary structure: mix short vs slightly longer phrasings, statements vs questions, and synonyms — but stay faithful to the original.
 
-Output must be valid JSON only (no markdown fences, no commentary). Use exactly this shape with exactly {n} strings:
-{{"paraphrases": ["...", "..."]}}
+Return exactly {n} paraphrases.
 
 Original query:
 {query}"""
@@ -210,7 +230,9 @@ def load_checkpoint() -> Optional[Dict]:
 class QueryGenerator:
     """Synchronous LLM client for synthetic query generation.
 
-    Owns retry logic, rate limiting, and leakage filtering.
+    Uses Pydantic-based structured output (``client.beta.chat.completions.parse``)
+    to guarantee valid JSON from the LLM. Falls back to ``json_object`` mode
+    if the beta endpoint is unavailable.
     """
 
     def __init__(
@@ -227,7 +249,43 @@ class QueryGenerator:
         self._client = OpenAI(api_key=resolved_key, base_url=base_url)
         self._model = model
 
-    # ----- low-level LLM call -----
+    # ----- low-level LLM calls -----
+
+    def _parse_structured(
+        self,
+        prompt: str,
+        response_format: type[BaseModel],
+    ) -> Optional[BaseModel]:
+        """Call the beta structured-output endpoint. Returns the parsed
+        Pydantic object, or ``None`` on failure."""
+        for attempt in range(LLM_MAX_RETRIES):
+            try:
+                self.throttle()
+                resp = self._client.beta.chat.completions.parse(
+                    model=self._model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=LLM_TEMPERATURE,
+                    max_tokens=LLM_MAX_TOKENS,
+                    response_format=response_format,
+                )
+                choice = resp.choices[0] if resp.choices else None
+                if choice and choice.message and choice.message.parsed:
+                    return choice.message.parsed
+                logger.warning(
+                    "Empty structured response (attempt %d/%d)", attempt + 1, LLM_MAX_RETRIES,
+                )
+            except (RateLimitError, APITimeoutError, APIConnectionError) as exc:
+                wait = max(LLM_RATE_LIMIT_DELAY, 1) * (2 ** attempt)
+                logger.warning("LLM error %s — retrying in %.1fs", exc, wait)
+                time.sleep(wait)
+            except Exception:
+                logger.error(
+                    "Structured output error (attempt %d/%d)",
+                    attempt + 1, LLM_MAX_RETRIES, exc_info=True,
+                )
+                if attempt < LLM_MAX_RETRIES - 1:
+                    time.sleep(max(LLM_RATE_LIMIT_DELAY, 1) * (2 ** attempt))
+        return None
 
     def _call_llm_once(
         self,
@@ -235,6 +293,7 @@ class QueryGenerator:
         *,
         response_format: Optional[dict] = None,
     ) -> Optional[str]:
+        """Fallback: plain text or json_object mode."""
         kwargs: dict = {
             "model": self._model,
             "messages": [{"role": "user", "content": prompt}],
@@ -305,11 +364,18 @@ class QueryGenerator:
         if not overview or not overview.strip():
             return []
         prompt = _SYNOPSIS_PROMPT.format(n=n, synopsis=overview)
-        raw = self._call_llm(prompt, response_format={"type": "json_object"})
-        if raw is None:
-            return []
-        queries = [q for q in _parse_json_string_list(raw, preferred_key="queries")
-                   if not check_leakage(q, movie_title)]
+
+        parsed = self._parse_structured(prompt, SynopsisQueries)
+        if parsed is not None:
+            queries = [q.strip() for q in parsed.queries if q.strip()]
+        else:
+            logger.warning("Structured output failed for synopsis; falling back to json_object")
+            raw = self._call_llm(prompt, response_format={"type": "json_object"})
+            if raw is None:
+                return []
+            queries = _parse_json_string_list(raw, preferred_key="queries")
+
+        queries = [q for q in queries if not check_leakage(q, movie_title)]
         if len(queries) < n // 2:
             logger.warning(
                 "Only %d/%d synopsis queries for '%s' (expected %d)",
@@ -319,6 +385,21 @@ class QueryGenerator:
 
     def generate_scene_summary(self, scene_text: str, movie_title: str) -> Optional[str]:
         prompt = _SCENE_SUMMARY_PROMPT.format(scene_text=scene_text)
+
+        parsed = self._parse_structured(prompt, SceneSummary)
+        if parsed is not None:
+            if not parsed.is_usable or parsed.too_generic:
+                return None
+            if parsed.contains_title or parsed.contains_character_name:
+                return None
+            query = parsed.query.strip()
+            if not query:
+                return None
+            if check_leakage(query, movie_title):
+                return None
+            return query
+
+        logger.warning("Structured output failed for scene summary; falling back to plain text")
         raw = self._call_llm(prompt)
         if raw is None:
             return None
@@ -331,11 +412,18 @@ class QueryGenerator:
 
     def generate_paraphrases(self, query: str, movie_title: str, n: int = 2) -> List[str]:
         prompt = _PARAPHRASE_PROMPT.format(n=n, query=query)
-        raw = self._call_llm(prompt, response_format={"type": "json_object"})
-        if raw is None:
-            return []
-        return [p for p in _parse_json_string_list(raw, preferred_key="paraphrases")
-                if not check_leakage(p, movie_title)]
+
+        parsed = self._parse_structured(prompt, Paraphrases)
+        if parsed is not None:
+            paraphrases = [p.strip() for p in parsed.paraphrases if p.strip()]
+        else:
+            logger.warning("Structured output failed for paraphrases; falling back to json_object")
+            raw = self._call_llm(prompt, response_format={"type": "json_object"})
+            if raw is None:
+                return []
+            paraphrases = _parse_json_string_list(raw, preferred_key="paraphrases")
+
+        return [p for p in paraphrases if not check_leakage(p, movie_title)]
 
     def throttle(self) -> None:
         """Sleep for the configured rate-limit delay between LLM calls."""

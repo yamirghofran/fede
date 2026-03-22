@@ -1,21 +1,19 @@
 """Orchestrate the full training-dataset generation pipeline.
 
-Ties together:
-    * ``SceneCorpus`` (corpus loading)
-    * ``QueryGenerator`` (synthetic query creation — Types A, B, C)
-    * ``PositiveAssigner`` (within-movie positive selection)
-    * ``NegativeMiner`` (random negatives for round 1)
+The pipeline is split into two independently runnable stages:
 
-Exports to a line-delimited JSONL file with the schema::
+**Stage 1 — generate_queries()** (LLM-only, no embedding model):
+    Iterates every movie in the corpus, calls the LLM for Type A (synopsis)
+    and Type B (scene summary) queries, and writes raw results to
+    ``data/finetuning/raw_queries.jsonl``.  Checkpoints every 50 movies;
+    safe to interrupt and resume.
 
-    {"anchor": str, "positive": str, "negatives": [str, ...]}
+**Stage 2 — assemble_pairs()** (local compute, no API calls):
+    Reads ``raw_queries.jsonl``, loads the embedding model, runs
+    ``PositiveAssigner`` for Type A queries, samples random negatives,
+    and writes the final ``training_pairs_r1.jsonl``.
 
-Supports checkpoint / resume so that a long LLM-bound run can be
-interrupted and continued without re-generating already-processed movies.
-
-The pipeline is fully synchronous.  With low-latency providers (e.g.
-Gemini direct API, ~1-3 s/call) and a rate delay of 0.08 s, 1200 movies
-complete in ~10-15 minutes sequentially.
+``build()`` is a convenience method that runs both stages back-to-back.
 """
 
 from __future__ import annotations
@@ -34,17 +32,18 @@ from finetuning.config import (
     RANDOM_NEGATIVES_PER_QUERY,
     TOP_SCENES_FOR_SUMMARY,
 )
-from finetuning.training.model import load_model
 from finetuning.corpus.scene_corpus import MovieEntry, build_scene_corpus
-from finetuning.dataset.negative_miner import sample_random_negatives
-from finetuning.dataset.positive_assigner import PositiveAssigner
 from finetuning.dataset.query_generator import (
     QueryGenerator,
+    check_leakage,
     load_checkpoint,
     save_checkpoint,
 )
 
 logger = logging.getLogger(__name__)
+
+_RAW_QUERIES_DEFAULT = FINETUNING_DATA_DIR / "raw_queries.jsonl"
+_TRAINING_PAIRS_DEFAULT = FINETUNING_DATA_DIR / "training_pairs_r1.jsonl"
 
 
 # ---------------------------------------------------------------------------
@@ -98,12 +97,11 @@ def _movie_ids_in_jsonl(path: Path) -> Set[str]:
 # ---------------------------------------------------------------------------
 
 class DatasetBuilder:
-    """End-to-end dataset builder for round-1 training data.
+    """Two-stage dataset builder for round-1 training data.
 
-    Usage::
-
-        builder = DatasetBuilder(max_movies=1200)
-        builder.build(output_path=Path("data/finetuning/training_pairs_r1.jsonl"))
+    Stage 1 (``generate_queries``) — LLM calls only, no embedding model.
+    Stage 2 (``assemble_pairs``) — local embedding + pair assembly, no API.
+    ``build()`` runs both in sequence.
     """
 
     def __init__(
@@ -115,149 +113,84 @@ class DatasetBuilder:
         self._max_movies = max_movies
         self._model_id = model_id
         self._api_key = api_key
-
         self._corpus: Optional[Dict[str, MovieEntry]] = None
-        self._query_gen: Optional[QueryGenerator] = None
-        self._assigner: Optional[PositiveAssigner] = None
-
-    # ----- lazy initialisation (heavy resources) -----
 
     def _ensure_corpus(self) -> Dict[str, MovieEntry]:
         if self._corpus is None:
             self._corpus = build_scene_corpus(max_movies=self._max_movies)
         return self._corpus
 
-    def _ensure_query_gen(self) -> QueryGenerator:
-        if self._query_gen is None:
-            self._query_gen = QueryGenerator(api_key=self._api_key)
-        return self._query_gen
+    # =======================================================================
+    # Stage 1: LLM-only query generation
+    # =======================================================================
 
-    def _ensure_assigner(self) -> PositiveAssigner:
-        if self._assigner is None:
-            logger.info("Loading embedding model %s on %s …", self._model_id, FINETUNING_EMBED_DEVICE)
-            model = load_model(self._model_id, device=FINETUNING_EMBED_DEVICE)
-            self._assigner = PositiveAssigner(model)
-        return self._assigner
-
-    # ----- per-movie generation -----
-
-    def _generate_for_movie(
+    def _generate_queries_for_movie(
         self,
         movie_id: str,
         entry: MovieEntry,
+        qgen: QueryGenerator,
     ) -> List[Dict[str, Any]]:
-        """Generate all Type-A and Type-B rows for one movie."""
-        qgen = self._ensure_query_gen()
-        assigner = self._ensure_assigner()
-        corpus = self._ensure_corpus()
+        """Generate raw query rows for one movie (no embedding needed)."""
         rows: List[Dict[str, Any]] = []
 
-        # -- Type A: synopsis queries --
+        # Type A: synopsis queries
         if entry.overview:
-            synopsis_queries = qgen.generate_synopsis_queries(
-                entry.overview, entry.movie_title, n=QUERIES_PER_MOVIE_SYNOPSIS
+            queries = qgen.generate_synopsis_queries(
+                entry.overview, entry.movie_title, n=QUERIES_PER_MOVIE_SYNOPSIS,
             )
             qgen.throttle()
+            for q in queries:
+                rows.append({
+                    "movie_id": movie_id,
+                    "movie_title": entry.movie_title,
+                    "query": q,
+                    "query_type": "synopsis",
+                    "scene_idx": None,
+                })
 
-            if synopsis_queries:
-                matches = assigner.assign_batch(synopsis_queries, entry.scenes)
-                for match in matches:
-                    negatives = sample_random_negatives(movie_id, corpus, n=RANDOM_NEGATIVES_PER_QUERY)
-                    for pos in match.positives:
-                        rows.append({
-                            "anchor": match.query,
-                            "positive": pos.text,
-                            "negatives": negatives,
-                            "movie_id": movie_id,
-                            "movie_title": entry.movie_title,
-                            "query_type": "synopsis",
-                        })
-
-        # -- Type B: scene-summary queries --
+        # Type B: scene summaries (top N longest scenes)
         sorted_scenes = sorted(entry.scenes, key=lambda s: len(s.text), reverse=True)
         top_scenes = sorted_scenes[:TOP_SCENES_FOR_SUMMARY]
-        for scene in top_scenes:
+        for i, scene in enumerate(top_scenes):
             summary = qgen.generate_scene_summary(scene.text, entry.movie_title)
             qgen.throttle()
             if not summary:
                 continue
-            negatives = sample_random_negatives(movie_id, corpus, n=RANDOM_NEGATIVES_PER_QUERY)
             rows.append({
-                "anchor": summary,
-                "positive": scene.text,
-                "negatives": negatives,
                 "movie_id": movie_id,
                 "movie_title": entry.movie_title,
+                "query": summary,
                 "query_type": "scene_summary",
+                "scene_idx": i,
             })
 
         return rows
 
-    # ----- paraphrase pass (Type C) -----
-
-    def _generate_paraphrases(
-        self,
-        rows: List[Dict[str, Any]],
-        max_paraphrases: int = 2,
-    ) -> List[Dict[str, Any]]:
-        qgen = self._ensure_query_gen()
-        corpus = self._ensure_corpus()
-        paraphrase_rows: List[Dict[str, Any]] = []
-
-        for i, row in enumerate(rows, 1):
-            paraphrases = qgen.generate_paraphrases(
-                row["anchor"], row["movie_title"], n=max_paraphrases
-            )
-            qgen.throttle()
-            for pq in paraphrases:
-                negatives = sample_random_negatives(
-                    row["movie_id"], corpus, n=RANDOM_NEGATIVES_PER_QUERY
-                )
-                paraphrase_rows.append({
-                    "anchor": pq,
-                    "positive": row["positive"],
-                    "negatives": negatives,
-                    "movie_id": row["movie_id"],
-                    "movie_title": row["movie_title"],
-                    "query_type": "paraphrase",
-                })
-            if i % 100 == 0:
-                logger.info("  Paraphrased %d / %d source pairs", i, len(rows))
-
-        return paraphrase_rows
-
-    # ----- main entry point -----
-
-    def build(
+    def generate_queries(
         self,
         output_path: Optional[Path] = None,
         resume: bool = True,
     ) -> Path:
-        """Generate the full round-1 training dataset.
+        """Stage 1: Generate raw queries via LLM (no embedding model loaded).
 
-        Args:
-            output_path: Where to write the JSONL.  Defaults to
-                ``data/finetuning/training_pairs_r1.jsonl``.
-            resume: If ``True``, skip movies already in the checkpoint
-                *and* movies already present in the output JSONL (prevents
-                duplicates when a run is interrupted between checkpoints).
+        Writes one JSONL line per query::
 
-        Returns:
-            The path to the written JSONL file.
+            {"movie_id": "...", "movie_title": "...", "query": "...",
+             "query_type": "synopsis|scene_summary", "scene_idx": null|int}
+
+        Checkpoints every 50 movies. Safe to interrupt and resume.
         """
-        output = output_path or (FINETUNING_DATA_DIR / "training_pairs_r1.jsonl")
+        output = output_path or _RAW_QUERIES_DEFAULT
         corpus = self._ensure_corpus()
         movie_ids = list(corpus.keys())
 
-        # Resume support — union checkpoint AND JSONL to prevent dupes
+        # Resume support
         processed: set = set()
         if resume:
             ckpt = load_checkpoint()
             if ckpt:
                 processed = set(ckpt.get("processed_movies", []))
                 logger.info("Checkpoint: %d movies", len(processed))
-
-            # Guard against the gap between last checkpoint and actual JSONL
             already_in_file = _movie_ids_in_jsonl(output)
             if already_in_file - processed:
                 logger.info(
@@ -269,8 +202,9 @@ class DatasetBuilder:
         todo = [mid for mid in movie_ids if mid not in processed]
         logger.info("%d movies to process (%d already done)", len(todo), len(processed))
 
-        # Phase 1: Type A + B for each movie
-        ab_pairs_written = _count_lines(output)
+        qgen = QueryGenerator(api_key=self._api_key)
+        queries_written = _count_lines(output)
+
         for i, mid in enumerate(todo):
             entry = corpus[mid]
             logger.info(
@@ -278,38 +212,164 @@ class DatasetBuilder:
                 len(processed) + i + 1, len(movie_ids), entry.movie_title,
             )
 
-            rows = self._generate_for_movie(mid, entry)
+            rows = self._generate_queries_for_movie(mid, entry, qgen)
 
             if rows:
                 _append_jsonl(output, rows)
-                ab_pairs_written += len(rows)
+                queries_written += len(rows)
                 processed.add(mid)
             else:
-                logger.warning("No pairs generated for %s — will retry on next resume", entry.movie_title)
+                logger.warning(
+                    "No queries generated for %s — will retry on next resume",
+                    entry.movie_title,
+                )
 
             if (i + 1) % CHECKPOINT_INTERVAL == 0:
-                save_checkpoint({"processed_movies": list(processed), "ab_pairs": ab_pairs_written})
-                logger.info("Checkpoint saved — %d movies, %d pairs so far", len(processed), ab_pairs_written)
+                save_checkpoint({
+                    "processed_movies": list(processed),
+                    "raw_queries": queries_written,
+                })
+                logger.info(
+                    "Checkpoint saved — %d movies, %d queries so far",
+                    len(processed), queries_written,
+                )
 
-        # Save checkpoint after Phase 1 completes
-        save_checkpoint({"processed_movies": list(processed), "ab_pairs": ab_pairs_written})
-
-        # Phase 2: Type C paraphrases
-        all_ab_rows = _read_jsonl(output)
-        paraphrase_source = all_ab_rows[:len(all_ab_rows) // 3]
-        del all_ab_rows
-        logger.info("Generating paraphrases from %d source pairs …", len(paraphrase_source))
-        paraphrase_rows = self._generate_paraphrases(paraphrase_source)
-        _append_jsonl(output, paraphrase_rows)
-
-        total = _count_lines(output)
-        logger.info("Dataset complete: %d total pairs written to %s", total, output)
         save_checkpoint({
             "processed_movies": list(processed),
-            "ab_pairs": ab_pairs_written,
-            "paraphrase_pairs": len(paraphrase_rows),
-            "total_pairs": total,
+            "raw_queries": queries_written,
+            "status": "queries_complete",
+        })
+        logger.info(
+            "Stage 1 complete: %d queries from %d movies → %s",
+            queries_written, len(processed), output,
+        )
+        return output
+
+    # =======================================================================
+    # Stage 2: Local embedding + pair assembly (no API calls)
+    # =======================================================================
+
+    def assemble_pairs(
+        self,
+        queries_path: Optional[Path] = None,
+        output_path: Optional[Path] = None,
+    ) -> Path:
+        """Stage 2: Read raw queries, assign positives via embedding, sample negatives.
+
+        Loads the embedding model, runs ``PositiveAssigner`` for Type A
+        queries, and writes the final training-pair JSONL.
+        """
+        from finetuning.training.model import load_model
+        from finetuning.dataset.positive_assigner import PositiveAssigner
+        from finetuning.dataset.negative_miner import sample_random_negatives
+
+        queries_path = queries_path or _RAW_QUERIES_DEFAULT
+        output = output_path or _TRAINING_PAIRS_DEFAULT
+        corpus = self._ensure_corpus()
+
+        if not queries_path.exists():
+            raise FileNotFoundError(
+                f"Raw queries file not found: {queries_path}. Run generate_queries() first."
+            )
+
+        # Load embedding model
+        logger.info("Loading embedding model %s on %s …", self._model_id, FINETUNING_EMBED_DEVICE)
+        emb_model = load_model(self._model_id, device=FINETUNING_EMBED_DEVICE)
+        assigner = PositiveAssigner(emb_model)
+
+        # Group raw queries by movie
+        raw_rows = _read_jsonl(queries_path)
+        by_movie: Dict[str, List[Dict[str, Any]]] = {}
+        for row in raw_rows:
+            by_movie.setdefault(row["movie_id"], []).append(row)
+
+        logger.info(
+            "Assembling pairs: %d queries across %d movies",
+            len(raw_rows), len(by_movie),
+        )
+
+        pairs: List[Dict[str, Any]] = []
+
+        for movie_id, query_rows in by_movie.items():
+            if movie_id not in corpus:
+                logger.warning("Movie %s not in corpus — skipping", movie_id)
+                continue
+            entry = corpus[movie_id]
+
+            # Separate Type A (synopsis) and Type B (scene_summary) queries
+            synopsis_queries = [r["query"] for r in query_rows if r["query_type"] == "synopsis"]
+            scene_rows = [r for r in query_rows if r["query_type"] == "scene_summary"]
+
+            # Type A: embed all scenes, find best positive per query
+            if synopsis_queries:
+                matches = assigner.assign_batch(synopsis_queries, entry.scenes)
+                for match in matches:
+                    negatives = sample_random_negatives(
+                        movie_id, corpus, n=RANDOM_NEGATIVES_PER_QUERY,
+                    )
+                    for pos in match.positives:
+                        pairs.append({
+                            "anchor": match.query,
+                            "positive": pos.text,
+                            "negatives": negatives,
+                            "movie_id": movie_id,
+                            "movie_title": entry.movie_title,
+                            "query_type": "synopsis",
+                        })
+
+            # Type B: source scene is the positive (indexed by scene_idx)
+            sorted_scenes = sorted(entry.scenes, key=lambda s: len(s.text), reverse=True)
+            top_scenes = sorted_scenes[:TOP_SCENES_FOR_SUMMARY]
+            for sr in scene_rows:
+                idx = sr.get("scene_idx")
+                if idx is None or idx >= len(top_scenes):
+                    continue
+                scene = top_scenes[idx]
+                negatives = sample_random_negatives(
+                    movie_id, corpus, n=RANDOM_NEGATIVES_PER_QUERY,
+                )
+                pairs.append({
+                    "anchor": sr["query"],
+                    "positive": scene.text,
+                    "negatives": negatives,
+                    "movie_id": movie_id,
+                    "movie_title": entry.movie_title,
+                    "query_type": "scene_summary",
+                })
+
+            if len(pairs) % 500 == 0 and pairs:
+                logger.info("  %d pairs assembled so far …", len(pairs))
+
+        # Write all pairs
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with open(output, "w", encoding="utf-8") as f:
+            for row in pairs:
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+        logger.info("Stage 2 complete: %d training pairs → %s", len(pairs), output)
+
+        # Update checkpoint
+        processed_movies = {p["movie_id"] for p in pairs}
+        save_checkpoint({
+            "processed_movies": list(processed_movies),
+            "ab_pairs": len(pairs),
             "status": "complete",
         })
 
         return output
+
+    # =======================================================================
+    # Convenience: run both stages
+    # =======================================================================
+
+    def build(
+        self,
+        output_path: Optional[Path] = None,
+        resume: bool = True,
+    ) -> Path:
+        """Run Stage 1 (generate_queries) then Stage 2 (assemble_pairs)."""
+        queries_path = self.generate_queries(resume=resume)
+        return self.assemble_pairs(
+            queries_path=queries_path,
+            output_path=output_path,
+        )

@@ -99,7 +99,7 @@ LLM_CONCURRENCY = int(os.getenv("FEDE_LLM_CONCURRENCY", "10"))
 # ---------------------------------------------------------------------------
 # Gemini Batch API — for bulk dataset generation (50% cheaper, no rate issues)
 # ---------------------------------------------------------------------------
-GEMINI_BATCH_MODEL = os.getenv("FEDE_BATCH_MODEL", "gemini-2.0-flash-lite")
+GEMINI_BATCH_MODEL = os.getenv("FEDE_BATCH_MODEL", "gemini-2.5-flash")
 GEMINI_BATCH_POLL_INTERVAL = int(os.getenv("FEDE_BATCH_POLL_INTERVAL", "30"))
 
 # ---------------------------------------------------------------------------
