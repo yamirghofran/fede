@@ -48,6 +48,7 @@ from finetuning.config import (
 )
 
 logger = logging.getLogger(__name__)
+_SYNOPSIS_QUERY_BATCH_SIZE = 4
 
 # ---------------------------------------------------------------------------
 # Prompts — every prompt asks for JSON so we can use json_object mode
@@ -177,7 +178,70 @@ def _parse_json_string_list(raw: str, *, preferred_key: Optional[str] = None) ->
                     return [str(item).strip() for item in value if str(item).strip()]
     except json.JSONDecodeError:
         logger.warning("Failed to parse LLM JSON output: %.120s", raw)
+        salvaged = _salvage_partial_json_string_list(raw, preferred_key=preferred_key)
+        if salvaged:
+            logger.warning(
+                "Salvaged %d string item(s) from partial LLM JSON output",
+                len(salvaged),
+            )
+            return salvaged
     return []
+
+
+def _salvage_partial_json_string_list(raw: str, *, preferred_key: Optional[str] = None) -> List[str]:
+    """Recover fully emitted string items from a truncated JSON array payload."""
+    cleaned = raw.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+
+    array_start: Optional[int] = None
+    keys_to_try: List[str] = []
+    if preferred_key:
+        keys_to_try.append(preferred_key)
+    keys_to_try.extend(k for k in ("queries", "paraphrases", "items", "results") if k not in keys_to_try)
+
+    for key in keys_to_try:
+        match = re.search(rf'"{re.escape(key)}"\s*:\s*\[', cleaned, re.IGNORECASE)
+        if match:
+            array_start = cleaned.find("[", match.start())
+            break
+    if array_start is None and cleaned.startswith("["):
+        array_start = 0
+    if array_start is None or array_start < 0:
+        return []
+
+    results: List[str] = []
+    in_string = False
+    escape = False
+    buf: List[str] = []
+
+    for ch in cleaned[array_start + 1:]:
+        if not in_string:
+            if ch == '"':
+                in_string = True
+                buf = []
+            elif ch == "]":
+                break
+            continue
+
+        if escape:
+            buf.append(ch)
+            escape = False
+            continue
+        if ch == "\\":
+            escape = True
+            continue
+        if ch == '"':
+            candidate = "".join(buf).strip()
+            if candidate:
+                results.append(candidate)
+            in_string = False
+            buf = []
+            continue
+        buf.append(ch)
+
+    return results
 
 
 def _parse_scene_summary_json(raw: str) -> Optional[str]:
@@ -337,12 +401,31 @@ class QueryGenerator:
     ) -> List[str]:
         if not overview or not overview.strip():
             return []
-        prompt = _SYNOPSIS_PROMPT.format(n=n, synopsis=overview)
-        raw = self._call_llm(prompt, response_format={"type": "json_object"})
-        if raw is None:
-            return []
-        queries = [q for q in _parse_json_string_list(raw, preferred_key="queries")
-                   if not check_leakage(q, movie_title)]
+        collected: List[str] = []
+        seen: set[str] = set()
+        attempts = 0
+        max_attempts = max(2, (n + _SYNOPSIS_QUERY_BATCH_SIZE - 1) // _SYNOPSIS_QUERY_BATCH_SIZE + 1)
+
+        while len(collected) < n and attempts < max_attempts:
+            attempts += 1
+            request_n = min(_SYNOPSIS_QUERY_BATCH_SIZE, n - len(collected))
+            prompt = _SYNOPSIS_PROMPT.format(n=request_n, synopsis=overview)
+            raw = self._call_llm(prompt, response_format={"type": "json_object"})
+            if raw is None:
+                continue
+            parsed = _parse_json_string_list(raw, preferred_key="queries")
+            for query in parsed:
+                if check_leakage(query, movie_title):
+                    continue
+                key = _normalize(query)
+                if not key or key in seen:
+                    continue
+                seen.add(key)
+                collected.append(query)
+                if len(collected) >= n:
+                    break
+
+        queries = collected
         if len(queries) < n // 2:
             logger.warning(
                 "Only %d/%d synopsis queries for '%s' (expected %d)",
