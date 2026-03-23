@@ -59,6 +59,14 @@ def load_model(
         kwargs["model_kwargs"] = {"torch_dtype": torch.float16}
 
     model = SentenceTransformer(model_id, **kwargs)
+
+    # Enforce a practical training-time truncation ceiling. Without this,
+    # very long scene texts can silently drive up memory use and step time.
+    max_seq_length = max(MAX_QUERY_LENGTH, MAX_DOCUMENT_LENGTH)
+    model.max_seq_length = max_seq_length
+    if hasattr(model[0], "max_seq_length"):
+        model[0].max_seq_length = max_seq_length
+
     logger.info("Model loaded — device=%s, dim=%d", model.device, model.get_sentence_embedding_dimension())
     return model
 

@@ -119,14 +119,18 @@ CHECKPOINT_INTERVAL = 50  # movies between checkpoints
 # ---------------------------------------------------------------------------
 LEARNING_RATE = 2e-5
 NUM_EPOCHS = 2
-TRAIN_BATCH_SIZE = 16
+# 12 GB-class GPUs handle EmbeddingGemma training much more reliably with
+# LoRA plus a modest per-device batch.
+TRAIN_BATCH_SIZE = 4
 WARMUP_RATIO = 0.1
-CACHED_MNRL_MINI_BATCH = 64
+# Cached MNRL uses an additional inner minibatch during loss computation.
+# Keep this small on consumer GPUs to avoid activation spikes.
+CACHED_MNRL_MINI_BATCH = 8
 MAX_QUERY_LENGTH = 96
 MAX_DOCUMENT_LENGTH = 384
 
-# LoRA fallback
-USE_LORA = False
+# Prefer LoRA by default for consumer GPUs.
+USE_LORA = True
 LORA_RANK = 16
 LORA_ALPHA = 32
 LORA_TARGET_MODULES = ["q_proj", "v_proj"]

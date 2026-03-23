@@ -11,8 +11,9 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
+import torch
 from datasets import Dataset
 from sentence_transformers import SentenceTransformer, SentenceTransformerTrainer
 from sentence_transformers.evaluation import InformationRetrievalEvaluator
@@ -35,6 +36,25 @@ from finetuning.config import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _mixed_precision_flags(want_amp: bool, use_lora: bool) -> Tuple[bool, bool]:
+    """Return ``(fp16, bf16)`` for ``TrainingArguments``.
+
+    On CUDA, prefer **bf16** when supported: ``fp16`` + GradScaler with LoRA can
+    raise ``ValueError: Attempting to unscale FP16 gradients``.
+    If LoRA is on but bf16 is unavailable, fall back to **fp32** (avoid broken fp16 path).
+    """
+    if not want_amp:
+        return False, False
+    if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+        return False, True
+    if use_lora:
+        logger.warning(
+            "CUDA bfloat16 not available with LoRA — training in fp32 (reduce batch size if OOM)"
+        )
+        return False, False
+    return True, False
 
 
 # ---------------------------------------------------------------------------
@@ -176,6 +196,7 @@ def build_trainer(
     learning_rate: float = LEARNING_RATE,
     warmup_ratio: float = WARMUP_RATIO,
     fp16: bool = True,
+    cached_mnrl_mini_batch: Optional[int] = None,
 ) -> SentenceTransformerTrainer:
     """Construct a ready-to-run ``SentenceTransformerTrainer``.
 
@@ -192,7 +213,8 @@ def build_trainer(
         batch_size: Per-device training batch size.
         learning_rate: Peak learning rate.
         warmup_ratio: Fraction of total steps used for LR warmup.
-        fp16: Enable mixed-precision training.
+        fp16: Enable mixed-precision training (bf16 on supported CUDA GPUs, else fp16).
+        cached_mnrl_mini_batch: Override ``CACHED_MNRL_MINI_BATCH`` from config (lower on limited VRAM).
 
     Returns:
         A ``SentenceTransformerTrainer`` — call ``.train()`` to start.
@@ -200,21 +222,26 @@ def build_trainer(
     if use_lora:
         model = _apply_lora(model)
 
+    mnrl_mb = cached_mnrl_mini_batch if cached_mnrl_mini_batch is not None else CACHED_MNRL_MINI_BATCH
     loss = CachedMultipleNegativesRankingLoss(
         model=model,
-        mini_batch_size=CACHED_MNRL_MINI_BATCH,
+        mini_batch_size=mnrl_mb,
     )
 
     eval_strategy = "epoch" if evaluator else "no"
     load_best = evaluator is not None
+
+    use_fp16, use_bf16 = _mixed_precision_flags(fp16, use_lora)
+    warmup_steps = warmup_ratio
 
     args = SentenceTransformerTrainingArguments(
         output_dir=output_dir,
         num_train_epochs=num_epochs,
         per_device_train_batch_size=batch_size,
         learning_rate=learning_rate,
-        warmup_ratio=warmup_ratio,
-        fp16=fp16,
+        warmup_steps=warmup_steps,
+        fp16=use_fp16,
+        bf16=use_bf16,
         batch_sampler="no_duplicates",
         eval_strategy=eval_strategy,
         save_strategy="epoch",
@@ -233,8 +260,9 @@ def build_trainer(
         evaluator=evaluator,
     )
 
+    prec = "bf16" if use_bf16 else ("fp16" if use_fp16 else "fp32")
     logger.info(
-        "Trainer built — epochs=%d, batch=%d, lr=%.1e, lora=%s, evaluator=%s, output=%s",
-        num_epochs, batch_size, learning_rate, use_lora, evaluator is not None, output_dir,
+        "Trainer built — epochs=%d, batch=%d, mnrl_mini=%d, amp=%s, lr=%.1e, warmup=%.3f, lora=%s, evaluator=%s, output=%s",
+        num_epochs, batch_size, mnrl_mb, prec, learning_rate, warmup_steps, use_lora, evaluator is not None, output_dir,
     )
     return trainer
