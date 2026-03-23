@@ -38,6 +38,22 @@ from finetuning.config import (
 logger = logging.getLogger(__name__)
 
 
+class FedeSentenceTransformerTrainer(SentenceTransformerTrainer):
+    """Trainer with a LoRA-aware best-checkpoint restore path."""
+
+    def _load_best_model(self) -> None:
+        best_ckpt = getattr(self.state, "best_model_checkpoint", None)
+        if not best_ckpt:
+            return
+        try:
+            from finetuning.training.model import load_model_state
+
+            logger.info("Loading best model state from %s", best_ckpt)
+            load_model_state(self.model, best_ckpt)
+        except Exception:
+            logger.exception("Could not load the best model from %s", best_ckpt)
+
+
 def _mixed_precision_flags(want_amp: bool, use_lora: bool) -> Tuple[bool, bool]:
     """Return ``(fp16, bf16)`` for ``TrainingArguments``.
 
@@ -88,11 +104,15 @@ def load_training_dataset(jsonl_path: Path) -> Dataset:
 def _apply_lora(model: SentenceTransformer) -> SentenceTransformer:
     """Wrap the model's transformer backbone with LoRA adapters."""
     try:
-        from peft import LoraConfig, get_peft_model
+        from peft import LoraConfig, PeftModel, get_peft_model
     except ImportError as exc:
         raise ImportError(
             "peft is required for LoRA fine-tuning.  Install with:  pip install peft"
         ) from exc
+
+    if isinstance(model[0].auto_model, PeftModel):
+        logger.info("Model already has LoRA adapters loaded; reusing existing PEFT model")
+        return model
 
     peft_config = LoraConfig(
         r=LORA_RANK,
@@ -252,7 +272,7 @@ def build_trainer(
         greater_is_better=True if load_best else None,
     )
 
-    trainer = SentenceTransformerTrainer(
+    trainer = FedeSentenceTransformerTrainer(
         model=model,
         args=args,
         train_dataset=train_dataset,
