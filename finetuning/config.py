@@ -121,7 +121,7 @@ LEARNING_RATE = 2e-5
 NUM_EPOCHS = 2
 # 12 GB-class GPUs handle EmbeddingGemma training much more reliably with
 # LoRA plus a modest per-device batch.
-TRAIN_BATCH_SIZE = 4
+TRAIN_BATCH_SIZE = 16
 WARMUP_RATIO = 0.1
 # Cached MNRL uses an additional inner minibatch during loss computation.
 # Keep this small on consumer GPUs to avoid activation spikes.

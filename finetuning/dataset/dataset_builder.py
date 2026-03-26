@@ -9,7 +9,8 @@ The pipeline is split into two independently runnable stages:
     safe to interrupt and resume.
 
 **Stage 2 — assemble_pairs()** (local compute, no API calls):
-    Reads ``raw_queries.jsonl``, loads the embedding model, runs
+    Reads ``raw_queries.cleaned.jsonl`` (falls back to ``raw_queries.jsonl``),
+    loads the embedding model, runs
     ``PositiveAssigner`` for Type A queries, samples random negatives,
     and writes the final ``training_pairs_r1.jsonl``.
 
@@ -42,7 +43,8 @@ from finetuning.dataset.query_generator import (
 
 logger = logging.getLogger(__name__)
 
-_RAW_QUERIES_DEFAULT = FINETUNING_DATA_DIR / "raw_queries.jsonl"
+_RAW_QUERIES_GENERATED = FINETUNING_DATA_DIR / "raw_queries.jsonl"
+_RAW_QUERIES_CLEANED = FINETUNING_DATA_DIR / "raw_queries.cleaned.jsonl"
 _TRAINING_PAIRS_DEFAULT = FINETUNING_DATA_DIR / "training_pairs_r1.jsonl"
 
 
@@ -191,7 +193,7 @@ class DatasetBuilder:
 
         Checkpoints every 50 movies. Safe to interrupt and resume.
         """
-        output = output_path or _RAW_QUERIES_DEFAULT
+        output = output_path or _RAW_QUERIES_GENERATED
         corpus = self._ensure_corpus()
         movie_ids = list(corpus.keys())
 
@@ -281,13 +283,16 @@ class DatasetBuilder:
         from finetuning.dataset.positive_assigner import PositiveAssigner
         from finetuning.dataset.negative_miner import sample_random_negatives
 
-        queries_path = queries_path or _RAW_QUERIES_DEFAULT
+        if queries_path is None:
+            # Prefer cleaner output when available so fine-tuning uses the
+            # audited/repaired query set by default.
+            queries_path = _RAW_QUERIES_CLEANED if _RAW_QUERIES_CLEANED.exists() else _RAW_QUERIES_GENERATED
         output = output_path or _TRAINING_PAIRS_DEFAULT
         corpus = self._ensure_corpus()
 
         if not queries_path.exists():
             raise FileNotFoundError(
-                f"Raw queries file not found: {queries_path}. Run generate_queries() first."
+                f"Queries file not found: {queries_path}. Run generate_queries() (and optionally clean_raw_queries) first."
             )
 
         # Resume: detect movies already written to the output file
