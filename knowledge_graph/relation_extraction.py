@@ -6,9 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "../fede/data/scripts/filtered")
-ENTITIES_DIR = os.path.join(os.path.dirname(__file__), "../fede/data/entities")
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "../fede/data/relations")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "../data/scripts/filtered")
+ENTITIES_DIR = os.path.join(os.path.dirname(__file__), "../data/knowledge_graph/entities_filtered")
+OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "../data/knowledge_graph/relations")
 
 LLM_API_KEY = os.getenv("LLM_API_KEY")
 LLM_MODEL   = os.getenv("LLM_MODEL")
@@ -17,6 +17,28 @@ LLM_API_URL = os.getenv("LLM_API_URL")
 client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_API_URL)
 
 MAX_CHUNK_CHARS = 4000
+
+# Character-to-character predicates
+CHAR_CHAR_PREDICATES = {
+    "BETRAYS", "TEACHES", "SAVES", "LIES_TO", "CONFRONTS", "ALLIES_WITH",
+    "THREATENS", "RECONCILES_WITH", "KILLS", "AVENGES", "MANIPULATES",
+    "PROTECTS", "SACRIFICES_FOR", "OWES", "LOVES", "HATES", "FORGIVES",
+    "BLAMES", "ABANDONS", "ENVIES",
+}
+
+# Character-to-concept predicates
+CHAR_CONCEPT_PREDICATES = {
+    "WANTS", "LEARNS", "LOSES", "DISCOVERS", "BELIEVES", "DOUBTS",
+    "FEARS", "REVEALS", "REJECTS", "MASTERS", "INHERITS", "SEEKS",
+    "ACCEPTS", "POSSESSES", "DESTROYS", "CREATES",
+}
+
+# Transformation predicates
+TRANSFORMATION_PREDICATES = {
+    "TRANSFORMS_INTO", "CORRUPTS", "REDEEMS", "REALIZES",
+}
+
+VALID_PREDICATES = CHAR_CHAR_PREDICATES | CHAR_CONCEPT_PREDICATES | TRANSFORMATION_PREDICATES
 
 
 def chunk_text(text: str, max_chars: int = MAX_CHUNK_CHARS) -> list[str]:
@@ -42,15 +64,29 @@ def call_llm(prompt: str) -> str:
     return response.choices[0].message.content
 
 
+ENTITY_TYPES = {"PERSON", "EVENT", "ORG", "NORP", "GPE", "LOC", "FAC", "WORK_OF_ART"}
+
+
+def filter_entities_for_relations(entities: list[dict]) -> list[dict]:
+    return [e for e in entities if e["label"] in ENTITY_TYPES]
+
+
 def extract_relations(chunk: str, entities: list[dict]) -> list[dict]:
     entity_list = "\n".join(f'- {e["text"]} ({e["label"]})' for e in entities)
-    prompt = f"""You are an information extraction assistant building a knowledge graph.
+    predicates = ", ".join(sorted(VALID_PREDICATES))
+    prompt = f"""You are an information extraction assistant building a knowledge graph for films.
 
-Given the following text and the named entities found in it, extract meaningful relations between entities.
-Only extract relations that are clearly supported by the text. Do not infer or hallucinate.
+Given the following text and named entities, extract meaningful relations between entities.
+Only extract relations clearly supported by the text. Do not infer or hallucinate.
+If no relations from the predicate list are clearly supported, return an empty array [].
 
-Return ONLY a valid JSON array of triples. No explanation, no markdown, just JSON.
-Each triple must have exactly these keys: "subject", "relation", "object".
+You MUST use only these predicates: {predicates}
+
+"from" must always be a PERSON. "to" can be any entity type.
+
+Return ONLY a valid JSON array. No explanation, no markdown, just JSON.
+Each item must have exactly these keys: "from", "from_type", "to", "to_type", "label", "evidence".
+"evidence" must be a short quote from the text supporting the relation.
 
 Entities:
 {entity_list}
@@ -59,20 +95,20 @@ Text:
 {chunk}
 
 Output format:
-[{{"subject": "Entity A", "relation": "relation_type", "object": "Entity B"}}]
+[{{"from": "Entity A", "from_type": "PERSON", "to": "Entity B", "to_type": "PERSON", "label": "BETRAYS", "evidence": "short quote from text"}}]
 """
     raw = call_llm(prompt)
-    # Strip markdown code fences if present
     raw = re.sub(r"^```(?:json)?\s*", "", raw.strip())
     raw = re.sub(r"\s*```$", "", raw.strip())
-    return json.loads(raw)
+    relations = json.loads(raw)
+    return [r for r in relations if r.get("label") in VALID_PREDICATES and r.get("from_type") == "PERSON"]
 
 
 def deduplicate_relations(relations: list[dict]) -> list[dict]:
     seen = set()
     unique = []
     for r in relations:
-        key = (r["subject"], r["relation"], r["object"])
+        key = (r["from"], r["label"], r["to"])
         if key not in seen:
             seen.add(key)
             unique.append(r)
@@ -97,7 +133,7 @@ def main():
 
         with open(entities_path, "r", encoding="utf-8") as f:
             entities_data = json.load(f)
-        entities = entities_data.get("entities", [])
+        entities = filter_entities_for_relations(entities_data.get("entities", []))
 
         with open(script_path, "r", encoding="utf-8") as f:
             text = f.read()
