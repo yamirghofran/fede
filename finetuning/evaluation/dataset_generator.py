@@ -1,9 +1,12 @@
-"""Generate a held-out evaluation query set for movie-level retrieval.
+"""Generate held-out evaluation query sets for movie-level retrieval.
 
-Produces ~``EVAL_DATASET_SIZE`` queries from movies that were *not* used
-in training.  Each query is a 1-sentence whole-movie description generated
-by the LLM, paired with the ground-truth ``movie_id`` so that
-``evaluate_batch`` can check retrieval correctness.
+Two generators are provided:
+
+* ``generate_eval_dataset`` — **overview-based** (Type A): one whole-movie
+  description per TMDB overview.  Tests generalisation to abstract queries.
+* ``generate_scene_eval_dataset`` — **scene-based** (Type B): queries
+  generated from actual scene text, directly aligned with the scene-level
+  training objective.  This is the recommended primary evaluation.
 
 Output schema (``data/finetuning/eval_queries.json``)::
 
@@ -21,7 +24,12 @@ import random
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from finetuning.config import EVAL_DATASET_SIZE, FINETUNING_DATA_DIR
+from finetuning.config import (
+    EVAL_DATASET_SIZE,
+    FINETUNING_DATA_DIR,
+    TOP_SCENES_FOR_SUMMARY,
+)
+from finetuning.corpus.scene_corpus import MovieEntry
 from finetuning.dataset.query_generator import QueryGenerator, check_leakage
 
 logger = logging.getLogger(__name__)
@@ -51,6 +59,7 @@ def generate_eval_dataset(
     output_path: Optional[Path] = None,
     n: int = EVAL_DATASET_SIZE,
     api_key: Optional[str] = None,
+    full_corpus_movie_ids: Optional[Set[str]] = None,
 ) -> Path:
     """Generate a held-out evaluation dataset.
 
@@ -62,6 +71,10 @@ def generate_eval_dataset(
             ``data/finetuning/eval_queries.json``.
         n: Target number of evaluation queries.
         api_key: OpenRouter API key override.
+        full_corpus_movie_ids: If provided, candidates are restricted to
+            movies whose ``movie_id`` is in this set (i.e. movies that
+            have parseable tagged scripts).  This prevents generating
+            eval queries for movies that have no scenes in the corpus.
 
     Returns:
         The path to the saved JSON file.
@@ -69,7 +82,6 @@ def generate_eval_dataset(
     output = output_path or (FINETUNING_DATA_DIR / "eval_queries.json")
     qgen = QueryGenerator(api_key=api_key)
 
-    # Build candidate pool: movies with a usable overview that are NOT in the training set
     candidates: List[Dict[str, Any]] = []
     for key, entry in metadata.items():
         file_info = entry.get("file", {})
@@ -78,6 +90,9 @@ def generate_eval_dataset(
         movie_id = movie_title.lower().replace(" ", "_").replace("-", "_")
 
         if movie_id in corpus_movie_ids:
+            continue
+
+        if full_corpus_movie_ids is not None and movie_id not in full_corpus_movie_ids:
             continue
 
         overview = tmdb_info.get("overview", "")
@@ -123,4 +138,119 @@ def generate_eval_dataset(
         json.dump(eval_queries, f, ensure_ascii=False, indent=2)
 
     logger.info("Eval dataset saved: %d queries → %s", len(eval_queries), output)
+    return output
+
+
+# ---------------------------------------------------------------------------
+# Scene-based evaluation dataset (recommended)
+# ---------------------------------------------------------------------------
+
+def generate_scene_eval_dataset(
+    train_movie_ids: Set[str],
+    corpus: Dict[str, MovieEntry],
+    output_path: Optional[Path] = None,
+    scenes_per_movie: int = TOP_SCENES_FOR_SUMMARY,
+    api_key: Optional[str] = None,
+    seed: int = 42,
+) -> Path:
+    """Generate a scene-based evaluation dataset from held-out movies.
+
+    For each non-training movie in *corpus*, picks the top
+    *scenes_per_movie* longest scenes and generates a scene-summary query
+    for each using the same prompt/logic as training (Type B queries).
+
+    This directly aligns evaluation with the scene-level training
+    objective and guarantees that every target movie has scenes in the
+    corpus.
+
+    Args:
+        train_movie_ids: Movie IDs used for training (excluded).
+        corpus: Full scene corpus (``build_scene_corpus(max_movies=None)``).
+        output_path: Where to write the JSON.  Defaults to
+            ``data/finetuning/eval_queries.json``.
+        scenes_per_movie: How many scenes per movie to generate queries
+            for.  Defaults to ``TOP_SCENES_FOR_SUMMARY`` (3).
+        api_key: OpenRouter API key override.
+        seed: RNG seed for shuffling candidate scenes.
+
+    Returns:
+        The path to the saved JSON file.
+    """
+    output = output_path or (FINETUNING_DATA_DIR / "eval_queries.json")
+    qgen = QueryGenerator(api_key=api_key)
+    rng = random.Random(seed)
+
+    eval_movies = {
+        mid: entry for mid, entry in corpus.items()
+        if mid not in train_movie_ids
+    }
+    logger.info(
+        "Eval pool: %d movies (corpus=%d, training=%d)",
+        len(eval_movies), len(corpus), len(train_movie_ids),
+    )
+
+    # Check for existing partial output so we can resume
+    existing: List[Dict[str, str]] = []
+    done_keys: Set[str] = set()
+    if output.exists():
+        try:
+            with open(output, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+            done_keys = {f"{q['movie_id']}::{q.get('_scene_idx', '')}" for q in existing}
+            logger.info("Resuming: %d queries already generated", len(existing))
+        except (json.JSONDecodeError, KeyError):
+            existing = []
+
+    eval_queries: List[Dict[str, str]] = list(existing)
+    movie_list = sorted(eval_movies.items(), key=lambda kv: kv[0])
+    rng.shuffle(movie_list)
+
+    total_movies = len(movie_list)
+    generated = 0
+    skipped_scenes = 0
+
+    for movie_idx, (mid, entry) in enumerate(movie_list, 1):
+        sorted_scenes = sorted(entry.scenes, key=lambda s: len(s.text), reverse=True)
+        top_scenes = sorted_scenes[:scenes_per_movie]
+
+        for scene_rank, scene in enumerate(top_scenes):
+            resume_key = f"{mid}::{scene_rank}"
+            if resume_key in done_keys:
+                continue
+
+            summary = qgen.generate_scene_summary(scene.text, entry.movie_title)
+            if summary is None:
+                skipped_scenes += 1
+                continue
+
+            eval_queries.append({
+                "query": summary,
+                "movie_id": mid,
+                "movie_title": entry.movie_title,
+                "_scene_idx": scene_rank,
+            })
+            generated += 1
+
+        if movie_idx % 10 == 0 or movie_idx == total_movies:
+            print(
+                f"  [{movie_idx}/{total_movies}] "
+                f"{generated} new queries generated, {skipped_scenes} skipped"
+            )
+            output.parent.mkdir(parents=True, exist_ok=True)
+            with open(output, "w", encoding="utf-8") as f:
+                json.dump(eval_queries, f, ensure_ascii=False, indent=2)
+
+    # Final write
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with open(output, "w", encoding="utf-8") as f:
+        json.dump(eval_queries, f, ensure_ascii=False, indent=2)
+
+    logger.info(
+        "Scene-eval dataset complete: %d queries from %d movies → %s",
+        len(eval_queries), total_movies, output,
+    )
+    print(
+        f"\n  Eval dataset: {len(eval_queries)} queries "
+        f"({generated} new, {len(existing)} resumed, {skipped_scenes} scenes skipped)"
+    )
     return output

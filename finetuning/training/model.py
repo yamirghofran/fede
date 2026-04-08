@@ -58,7 +58,7 @@ def _shared_hf_kwargs(device: Optional[str]) -> dict:
     if device is not None:
         kwargs["device"] = device
     if FINETUNING_EMBED_FP16:
-        kwargs["model_kwargs"] = {"torch_dtype": torch.float16}
+        kwargs["model_kwargs"] = {"torch_dtype": torch.bfloat16}
     return kwargs
 
 
@@ -174,6 +174,32 @@ def load_model_state(target_model: SentenceTransformer, checkpoint_path: str) ->
     _apply_sequence_length(target_model)
 
 
+def _encode(
+    model: SentenceTransformer,
+    texts: List[str],
+    prompt_method: str,
+    batch_size: int,
+    show_progress: bool,
+) -> np.ndarray:
+    """Shared encode logic — always returns float32 to avoid fp16 NaN."""
+    encode_fn = getattr(model, prompt_method, None)
+    if callable(encode_fn):
+        result = encode_fn(
+            texts,
+            normalize_embeddings=True,
+            batch_size=batch_size,
+            show_progress_bar=show_progress,
+        )
+    else:
+        result = model.encode(
+            texts,
+            normalize_embeddings=True,
+            batch_size=batch_size,
+            show_progress_bar=show_progress,
+        )
+    return np.asarray(result, dtype=np.float32)
+
+
 def encode_queries(
     model: SentenceTransformer,
     texts: Union[str, List[str]],
@@ -185,25 +211,12 @@ def encode_queries(
     Returns shape ``(768,)`` for a single string, ``(N, 768)`` for a list.
     Uses ``encode_query`` when available (EmbeddingGemma-style models that
     declare query/document prompts internally), falls back to plain ``encode``.
+    Always returns float32 regardless of model dtype.
     """
     single = isinstance(texts, str)
     if single:
         texts = [texts]
-    encode_fn = getattr(model, "encode_query", None)
-    if callable(encode_fn):
-        result = np.array(encode_fn(
-            texts,
-            normalize_embeddings=True,
-            batch_size=batch_size,
-            show_progress_bar=show_progress,
-        ))
-    else:
-        result = np.array(model.encode(
-            texts,
-            normalize_embeddings=True,
-            batch_size=batch_size,
-            show_progress_bar=show_progress,
-        ))
+    result = _encode(model, texts, "encode_query", batch_size, show_progress)
     return result[0] if single else result
 
 
@@ -218,23 +231,10 @@ def encode_documents(
     Returns shape ``(768,)`` for a single string, ``(N, 768)`` for a list.
     Uses ``encode_document`` when available (EmbeddingGemma-style models),
     falls back to plain ``encode``.
+    Always returns float32 regardless of model dtype.
     """
     single = isinstance(texts, str)
     if single:
         texts = [texts]
-    encode_fn = getattr(model, "encode_document", None)
-    if callable(encode_fn):
-        result = np.array(encode_fn(
-            texts,
-            normalize_embeddings=True,
-            batch_size=batch_size,
-            show_progress_bar=show_progress,
-        ))
-    else:
-        result = np.array(model.encode(
-            texts,
-            normalize_embeddings=True,
-            batch_size=batch_size,
-            show_progress_bar=show_progress,
-        ))
+    result = _encode(model, texts, "encode_document", batch_size, show_progress)
     return result[0] if single else result

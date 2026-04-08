@@ -148,12 +148,15 @@ def build_evaluator(
     The evaluator runs after each epoch and computes MRR, NDCG, Accuracy,
     and Recall at the configured k values.
 
+    Each scene is a separate corpus document so the evaluator embeds at the
+    same granularity the model is trained on.  A query's relevant-doc set
+    contains **all** scene IDs belonging to its target movie, so a hit on
+    any scene from the correct movie counts as a success.
+
     Args:
         eval_queries_path: Path to ``eval_queries.json`` — each entry has
             ``query``, ``movie_id``, ``movie_title``.
         corpus: ``Dict[movie_id, MovieEntry]`` from ``build_scene_corpus()``.
-            Each movie's scenes are concatenated into one document per movie
-            so that the evaluator measures movie-level retrieval.
 
     Returns:
         A ready-to-use ``InformationRetrievalEvaluator``.
@@ -166,17 +169,21 @@ def build_evaluator(
     # relevant_docs: {qid: {doc_id, ...}}
     relevant_docs: Dict[str, Set[str]] = {}
 
+    # Build a scene-level corpus and map each movie to its scene doc IDs.
+    corpus_dict: Dict[str, str] = {}
+    movie_scene_ids: Dict[str, Set[str]] = {}
+    for movie_id, entry in corpus.items():
+        scene_ids: Set[str] = set()
+        for idx, scene in enumerate(entry.scenes):
+            doc_id = f"{movie_id}__scene_{idx}"
+            corpus_dict[doc_id] = scene.text
+            scene_ids.add(doc_id)
+        movie_scene_ids[movie_id] = scene_ids
+
     for i, q in enumerate(raw_queries):
         qid = f"q_{i}"
         queries[qid] = q["query"]
-        relevant_docs[qid] = {q["movie_id"]}
-
-    # corpus_dict: {doc_id: doc_text}
-    # One document per movie — concatenate all scene texts so the evaluator
-    # embeds each movie once rather than per-scene.
-    corpus_dict: Dict[str, str] = {}
-    for movie_id, entry in corpus.items():
-        corpus_dict[movie_id] = "\n\n".join(s.text for s in entry.scenes)
+        relevant_docs[qid] = movie_scene_ids.get(q["movie_id"], set())
 
     max_k = max(EVAL_K_VALUES)
     evaluator = InformationRetrievalEvaluator(
@@ -195,8 +202,8 @@ def build_evaluator(
     )
 
     logger.info(
-        "Evaluator built — %d queries, %d corpus docs, k=%s",
-        len(queries), len(corpus_dict), EVAL_K_VALUES,
+        "Evaluator built — %d queries, %d scene docs (from %d movies), k=%s",
+        len(queries), len(corpus_dict), len(corpus), EVAL_K_VALUES,
     )
     return evaluator
 
