@@ -67,6 +67,7 @@ db.sqlite3-journal
 datasets/
 # data/  ← Temporarily commented out to allow DVC tracking
 !data/**/*.dvc
+/scripts/.indexed_movies.txt
 
 # Flask stuff:
 instance/

@@ -191,7 +191,7 @@ class ScriptIndexer:
         self._scenes.client.upsert(
             collection_name=self._scenes.collection_name,
             points=points,
-            wait=True,
+            wait=False,
         )
 
     def _batch_upsert_sentences(self, records: List[SentenceRecord]) -> None:
@@ -215,7 +215,7 @@ class ScriptIndexer:
         self._sentences.client.upsert(
             collection_name=self._sentences.collection_name,
             points=points,
-            wait=True,
+            wait=False,
         )
 
 

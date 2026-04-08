@@ -5,13 +5,15 @@ with ScriptChunker, embeds with a HuggingFace SentenceTransformer, and
 bulk-upserts into Qdrant via ScriptIndexer.
 
 Usage:
-    python scripts/index_scripts.py [options]
+    python scripts/upload_scripts.py [options]
 
 Options:
     --batch-size N   Embedding batch size (overrides EMBEDDING_BATCH_SIZE, default 64)
     --device DEVICE  Compute device: cpu | cuda | mps | auto (overrides EMBEDDING_DEVICE)
     --limit N        Process only the first N movies (useful for smoke-testing)
     --no-resume      Ignore the progress file and re-index all movies
+    --workers N      Number of parallel worker processes (default 1)
+                     Each worker loads its own model copy. Recommended: 2–4 on CPU.
 """
 
 from __future__ import annotations
@@ -19,10 +21,12 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
+import multiprocessing as mp
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
 # Resolve project root so the script can be run from any working directory
@@ -34,6 +38,7 @@ from dotenv import load_dotenv
 
 load_dotenv(ROOT / ".env", override=False)
 
+import numpy as np
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
@@ -56,6 +61,29 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 log = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Multiprocessing: lock injected into worker processes via Pool initializer
+# ---------------------------------------------------------------------------
+_progress_lock: Optional[mp.synchronize.Lock] = None
+
+
+def _worker_init(lock: mp.synchronize.Lock) -> None:
+    """Pool initializer — stores the shared lock and re-loads env in the worker."""
+    global _progress_lock
+    _progress_lock = lock
+    # Prevent HuggingFace fast tokenizers from spinning up their own loky/joblib
+    # thread pool inside each worker. Without this, semaphore objects leak at
+    # shutdown because loky doesn't clean up when the parent process exits.
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    # Workers are spawned fresh; re-insert project root and reload .env
+    sys.path.insert(0, str(ROOT))
+    load_dotenv(ROOT / ".env", override=False)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s][W%(process)d] %(message)s",
+        datefmt="%H:%M:%S",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -93,15 +121,30 @@ def _encode(
     texts: List[str],
     batch_size: int,
 ) -> List[List[float]]:
-    """Encode a list of texts; returns List[List[float]] ready for Qdrant."""
-    vecs = model.encode(
-        texts,
-        batch_size=batch_size,
-        normalize_embeddings=True,   # cosine similarity → dot product on unit vecs
-        convert_to_numpy=True,
-        show_progress_bar=False,
-    )
-    return vecs.tolist()
+    """Encode document texts for indexing; returns List[List[float]] ready for Qdrant.
+
+    Uses model.encode_document() when available (EmbeddingGemma models register
+    query/document prompts internally), falling back to plain encode(). This ensures
+    indexed vectors are in the correct prompt space — never use bare encode() here
+    and encode_queries() at search time, as they would produce mismatched spaces.
+    """
+    encode_fn = getattr(model, "encode_document", None)
+    if callable(encode_fn):
+        vecs = encode_fn(
+            texts,
+            batch_size=batch_size,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
+    else:
+        vecs = model.encode(
+            texts,
+            batch_size=batch_size,
+            normalize_embeddings=True,
+            convert_to_numpy=True,
+            show_progress_bar=False,
+        )
+    return np.asarray(vecs, dtype=np.float32).tolist()
 
 
 def _load_progress(progress_file: Path) -> set[str]:
@@ -112,8 +155,16 @@ def _load_progress(progress_file: Path) -> set[str]:
 
 
 def _mark_done(progress_file: Path, movie_id: str) -> None:
-    with progress_file.open("a", encoding="utf-8") as fh:
-        fh.write(movie_id + "\n")
+    """Append movie_id to the progress file, using a lock when running in parallel."""
+    def _write() -> None:
+        with progress_file.open("a", encoding="utf-8") as fh:
+            fh.write(movie_id + "\n")
+
+    if _progress_lock is not None:
+        with _progress_lock:
+            _write()
+    else:
+        _write()
 
 
 # ---------------------------------------------------------------------------
@@ -173,6 +224,53 @@ def _process_movie(
 
 
 # ---------------------------------------------------------------------------
+# Parallel worker entry point
+# ---------------------------------------------------------------------------
+
+def _worker_fn(
+    args: Tuple,
+) -> Tuple[int, int]:
+    """Process a chunk of movies in a worker process.
+
+    Each worker loads its own model instance. PyTorch thread count is capped
+    at ``threads_per_worker`` to avoid CPU over-subscription across workers.
+    Qdrant upserts are safe to run concurrently — the server handles them, and
+    all point IDs are deterministic + movie-scoped so there is no collision risk.
+    """
+    movies_chunk, model_name, device, batch_size, progress_file_str, threads_per_worker = args
+
+    # Cap PyTorch intra-op threads to avoid N workers each fighting for all cores
+    try:
+        import torch
+        torch.set_num_threads(max(1, threads_per_worker))
+    except Exception:
+        pass
+
+    model = _load_model(model_name, device)
+    # Each worker creates its own Qdrant client — thread-safe, no shared state
+    indexer = ScriptIndexer()
+    progress_file = Path(progress_file_str)
+
+    succeeded = failed = 0
+    for meta_key, meta in movies_chunk:
+        ok = _process_movie(
+            meta_key=meta_key,
+            meta=meta,
+            model=model,
+            indexer=indexer,
+            batch_size=batch_size,
+            progress_file=progress_file,
+        )
+        if ok:
+            succeeded += 1
+        else:
+            failed += 1
+
+    log.info("Worker done — succeeded=%d failed=%d", succeeded, failed)
+    return succeeded, failed
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -200,9 +298,24 @@ def main() -> None:
         action="store_true",
         help="Ignore the progress file and re-index all movies",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        metavar="N",
+        help=(
+            "Number of parallel worker processes (default: 1). "
+            "Each worker loads its own model copy. "
+            "Recommended: 2–4 on CPU with 24 GB RAM."
+        ),
+    )
     args = parser.parse_args()
 
-    # --- Model ---
+    if args.workers < 1:
+        log.error("--workers must be >= 1")
+        sys.exit(1)
+
+    # --- Model name + device (resolved once; workers inherit these values) ---
     model_name = os.getenv("EMBEDDING_MODEL_NAME")
     if not model_name:
         log.error(
@@ -212,9 +325,9 @@ def main() -> None:
         sys.exit(1)
 
     device = _resolve_device(args.device)
-    model = _load_model(model_name, device)
 
-    # Validate vector size matches Qdrant config
+    # Validate vector size by loading the model once in the main process
+    model = _load_model(model_name, device)
     model_dim = model.get_sentence_embedding_dimension()
     qdrant_dim = int(os.getenv("QDRANT_VECTOR_SIZE", "768"))
     if model_dim != qdrant_dim:
@@ -226,10 +339,9 @@ def main() -> None:
         )
         sys.exit(1)
 
-    # --- Qdrant ---
+    # --- Qdrant: initialise collections once before spawning workers ---
     log.info("Initialising Qdrant collections ...")
     initialize_all_collections()
-    indexer = ScriptIndexer()
 
     # --- Metadata ---
     log.info("Loading metadata from %s ...", METADATA_PATH)
@@ -244,7 +356,6 @@ def main() -> None:
         if already_indexed:
             log.info("Resuming — %d movies already indexed, skipping.", len(already_indexed))
 
-    # Build work list (filter by resume set, then apply --limit)
     def _meta_key_to_movie_id(name: str) -> str:
         return name.lower().replace(" ", "_").replace("-", "_")
 
@@ -259,28 +370,72 @@ def main() -> None:
 
     log.info("%d movies to index.", len(movies_to_process))
 
-    # --- Main loop ---
-    succeeded = 0
-    failed = 0
-    skipped = 0
+    succeeded = failed = 0
 
-    with tqdm(movies_to_process, unit="movie", dynamic_ncols=True) as pbar:
-        for meta_key, meta in pbar:
-            movie_name = meta["file"]["name"]
-            pbar.set_description(movie_name[:40])
+    # -----------------------------------------------------------------------
+    # Single-worker path (original behaviour, keeps tqdm progress bar)
+    # -----------------------------------------------------------------------
+    if args.workers == 1:
+        indexer = ScriptIndexer()
+        with tqdm(movies_to_process, unit="movie", dynamic_ncols=True) as pbar:
+            for meta_key, meta in pbar:
+                pbar.set_description(meta["file"]["name"][:40])
+                ok = _process_movie(
+                    meta_key=meta_key,
+                    meta=meta,
+                    model=model,
+                    indexer=indexer,
+                    batch_size=args.batch_size,
+                    progress_file=PROGRESS_FILE,
+                )
+                if ok:
+                    succeeded += 1
+                else:
+                    failed += 1
 
-            ok = _process_movie(
-                meta_key=meta_key,
-                meta=meta,
-                model=model,
-                indexer=indexer,
-                batch_size=args.batch_size,
-                progress_file=PROGRESS_FILE,
-            )
-            if ok:
-                succeeded += 1
-            else:
-                failed += 1
+    # -----------------------------------------------------------------------
+    # Multi-worker path
+    # -----------------------------------------------------------------------
+    else:
+        # Release the main-process model before forking to avoid duplicating
+        # its memory into every child (spawn still copies imports, but not tensors)
+        del model
+
+        n_workers = min(args.workers, len(movies_to_process))
+        log.info("Spawning %d worker processes ...", n_workers)
+
+        # Distribute movies as evenly as possible across workers
+        chunk_size = math.ceil(len(movies_to_process) / n_workers)
+        chunks = [
+            movies_to_process[i : i + chunk_size]
+            for i in range(0, len(movies_to_process), chunk_size)
+        ]
+
+        # How many PyTorch threads each worker should use
+        try:
+            cpu_count = os.cpu_count() or 1
+        except Exception:
+            cpu_count = 1
+        threads_per_worker = max(1, cpu_count // n_workers)
+
+        worker_args = [
+            (chunk, model_name, device, args.batch_size, str(PROGRESS_FILE), threads_per_worker)
+            for chunk in chunks
+        ]
+
+        manager = mp.Manager()
+        lock = manager.Lock()
+
+        with mp.Pool(
+            processes=n_workers,
+            initializer=_worker_init,
+            initargs=(lock,),
+        ) as pool:
+            results = pool.map(_worker_fn, worker_args)
+
+        for s, f in results:
+            succeeded += s
+            failed += f
 
     log.info(
         "Done. succeeded=%d  failed=%d  skipped(already indexed)=%d",
