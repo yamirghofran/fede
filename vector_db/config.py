@@ -18,7 +18,7 @@ def _normalize_qdrant_url(raw_url: str, https_hint: bool) -> Optional[str]:
         return url
 
     local_hosts = ("localhost", "127.0.0.1", "[::1]")
-    scheme = "http" if url.startswith(local_hosts) else ("https" if https_hint else "https")
+    scheme = "http" if url.startswith(local_hosts) else ("https" if https_hint else "http")
     return f"{scheme}://{url}"
 
 
@@ -106,7 +106,9 @@ class QdrantConfig:
         raw_environment = os.getenv("QDRANT_ENV", "").strip().lower()
         environment = raw_environment if raw_environment in {"dev", "prod"} else None
 
-        mode = _from_profile_or_global("MODE", environment, "server").strip()
+        mode = _from_profile_or_global("MODE", environment, "server").strip().lower()
+        if mode == "memory":
+            mode = "local"
 
         if mode not in ("local", "server"):
             raise ValueError(
