@@ -259,14 +259,21 @@ def build_trainer(
     load_best = evaluator is not None
 
     use_fp16, use_bf16 = _mixed_precision_flags(fp16, use_lora)
-    warmup_steps = warmup_ratio
+
+    # Map dataset columns to the model's named prompt templates so that
+    # anchors are encoded with the "query" prompt and positives/negatives
+    # with the "document" prompt during training — matching inference.
+    prompts = {"anchor": "query", "positive": "document"}
+    for col in train_dataset.column_names:
+        if col.startswith("negative"):
+            prompts[col] = "document"
 
     args = SentenceTransformerTrainingArguments(
         output_dir=output_dir,
         num_train_epochs=num_epochs,
         per_device_train_batch_size=batch_size,
         learning_rate=learning_rate,
-        warmup_steps=warmup_steps,
+        warmup_ratio=warmup_ratio,
         fp16=use_fp16,
         bf16=use_bf16,
         batch_sampler="no_duplicates",
@@ -277,6 +284,7 @@ def build_trainer(
         load_best_model_at_end=load_best,
         metric_for_best_model="eval_fede-ir-eval_cosine_mrr@20" if load_best else None,
         greater_is_better=True if load_best else None,
+        prompts=prompts,
     )
 
     trainer = FedeSentenceTransformerTrainer(
@@ -290,6 +298,6 @@ def build_trainer(
     prec = "bf16" if use_bf16 else ("fp16" if use_fp16 else "fp32")
     logger.info(
         "Trainer built — epochs=%d, batch=%d, mnrl_mini=%d, amp=%s, lr=%.1e, warmup=%.3f, lora=%s, evaluator=%s, output=%s",
-        num_epochs, batch_size, mnrl_mb, prec, learning_rate, warmup_steps, use_lora, evaluator is not None, output_dir,
+        num_epochs, batch_size, mnrl_mb, prec, learning_rate, warmup_ratio, use_lora, evaluator is not None, output_dir,
     )
     return trainer

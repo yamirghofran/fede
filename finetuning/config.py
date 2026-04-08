@@ -110,7 +110,7 @@ TOP_SCENES_FOR_SUMMARY = 3
 QUERIES_PER_MOVIE_SYNOPSIS = 4
 RANDOM_NEGATIVES_PER_QUERY = 3
 HARD_NEGATIVES_PER_QUERY = 3
-POSITIVE_MIN_SCORE = 0.2
+POSITIVE_MIN_SCORE = 0.35
 POSITIVE_CLOSE_GAP = 0.05
 CHECKPOINT_INTERVAL = 50  # movies between checkpoints
 
@@ -118,6 +118,7 @@ CHECKPOINT_INTERVAL = 50  # movies between checkpoints
 # Training hyperparameters
 # ---------------------------------------------------------------------------
 LEARNING_RATE = 2e-5
+ROUND2_LEARNING_RATE = 5e-6
 NUM_EPOCHS = 2
 # 12 GB-class GPUs handle EmbeddingGemma training much more reliably with
 # LoRA plus a modest per-device batch.
@@ -127,7 +128,7 @@ WARMUP_RATIO = 0.1
 # Keep this small on consumer GPUs to avoid activation spikes.
 CACHED_MNRL_MINI_BATCH = 8
 MAX_QUERY_LENGTH = 96
-MAX_DOCUMENT_LENGTH = 384
+MAX_DOCUMENT_LENGTH = 512
 
 # Prefer LoRA by default for consumer GPUs.
 USE_LORA = True

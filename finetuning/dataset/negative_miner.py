@@ -24,12 +24,11 @@ from sentence_transformers import SentenceTransformer
 from preprocessing.chunker import SceneChunk
 
 from finetuning.config import (
-    DOCUMENT_PREFIX,
     HARD_NEGATIVES_PER_QUERY,
-    QUERY_PREFIX,
     RANDOM_NEGATIVES_PER_QUERY,
 )
 from finetuning.corpus.scene_corpus import MovieEntry
+from finetuning.training.model import encode_documents, encode_queries
 
 logger = logging.getLogger(__name__)
 
@@ -89,17 +88,12 @@ class CorpusIndex:
 
         for mid, entry in corpus.items():
             for scene in entry.scenes:
-                texts.append(DOCUMENT_PREFIX + scene.text)
+                texts.append(scene.text)
                 mids.append(mid)
 
         logger.info("Encoding %d scenes for hard-negative index …", len(texts))
-        embs = model.encode(
-            texts,
-            normalize_embeddings=True,
-            show_progress_bar=True,
-            batch_size=batch_size,
-        )
-        return cls(embeddings=np.asarray(embs, dtype=np.float32), movie_ids=mids, scene_texts=texts)
+        embs = encode_documents(model, texts, batch_size=batch_size, show_progress=True)
+        return cls(embeddings=embs, movie_ids=mids, scene_texts=texts)
 
 
 def mine_hard_negatives(
@@ -115,10 +109,7 @@ def mine_hard_negatives(
     pre-computed corpus index yields cosine similarity (both sides are
     L2-normalised).
     """
-    query_emb = model.encode(
-        QUERY_PREFIX + query,
-        normalize_embeddings=True,
-    )
+    query_emb = encode_queries(model, query)
     sims = np.dot(index.embeddings, query_emb)
     ranked = np.argsort(-sims)
 

@@ -84,6 +84,9 @@ target/
 # Jupyter Notebook
 .ipynb_checkpoints
 
+# Local fine-tuned model weights (large binary files)
+notebooks/fede-embeddinggemma/
+
 # IPython
 profile_default/
 ipython_config.py
