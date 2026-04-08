@@ -58,7 +58,7 @@ python scripts/upload_scripts.py --no-resume
 
 | Variable | Example | Description |
 |---|---|---|
-| `EMBEDDING_MODEL_NAME` | `sentence-transformers/all-mpnet-base-v2` | HuggingFace model ID |
+| `EMBEDDING_MODEL_ID` | `sentence-transformers/all-mpnet-base-v2` | HuggingFace model ID |
 | `QDRANT_VECTOR_SIZE` | `768` | Must match model output dimension |
 | `QDRANT_HOST` | `localhost` | Qdrant host |
 | `QDRANT_PORT` | `6333` | Qdrant REST port |
