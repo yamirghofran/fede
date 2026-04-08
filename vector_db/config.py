@@ -106,7 +106,9 @@ class QdrantConfig:
         raw_environment = os.getenv("QDRANT_ENV", "").strip().lower()
         environment = raw_environment if raw_environment in {"dev", "prod"} else None
 
-        mode = _from_profile_or_global("MODE", environment, "server").strip()
+        mode = _from_profile_or_global("MODE", environment, "server").strip().lower()
+        if mode == "memory":
+            mode = "local"
 
         if mode not in ("local", "server"):
             raise ValueError(
