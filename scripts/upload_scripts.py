@@ -316,11 +316,11 @@ def main() -> None:
         sys.exit(1)
 
     # --- Model name + device (resolved once; workers inherit these values) ---
-    model_name = os.getenv("EMBEDDING_MODEL_NAME")
+    model_name = os.getenv("EMBEDDING_MODEL_ID")
     if not model_name:
         log.error(
-            "EMBEDDING_MODEL_NAME is not set. "
-            "Add it to .env (e.g. EMBEDDING_MODEL_NAME=sentence-transformers/all-mpnet-base-v2)"
+            "EMBEDDING_MODEL_ID is not set. "
+            "Add it to .env (e.g. EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2)"
         )
         sys.exit(1)
 
