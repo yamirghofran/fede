@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "../data/scripts/filtered")
-ENTITIES_DIR = os.path.join(os.path.dirname(__file__), "../data/knowledge_graph/entities_filtered")
+ENTITIES_DIR = os.path.join(os.path.dirname(__file__), "../data/knowledge_graph/entities_clean")
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "../data/knowledge_graph/relations")
 
 LLM_API_KEY = os.getenv("LLM_API_KEY")
@@ -38,7 +38,12 @@ TRANSFORMATION_PREDICATES = {
     "TRANSFORMS_INTO", "CORRUPTS", "REDEEMS", "REALIZES",
 }
 
-VALID_PREDICATES = CHAR_CHAR_PREDICATES | CHAR_CONCEPT_PREDICATES | TRANSFORMATION_PREDICATES
+# Social/family predicates
+SOCIAL_PREDICATES = {
+    "MARRIED_TO", "PARENT_OF", "CHILD_OF", "SIBLINGS_WITH", "WORKS_FOR", "LEADS",
+}
+
+VALID_PREDICATES = CHAR_CHAR_PREDICATES | CHAR_CONCEPT_PREDICATES | TRANSFORMATION_PREDICATES | SOCIAL_PREDICATES
 
 
 def chunk_text(text: str, max_chars: int = MAX_CHUNK_CHARS) -> list[str]:
@@ -67,12 +72,16 @@ def call_llm(prompt: str) -> str:
 ENTITY_TYPES = {"PERSON", "EVENT", "ORG", "NORP", "GPE", "LOC", "FAC", "WORK_OF_ART"}
 
 
-def filter_entities_for_relations(entities: list[dict]) -> list[dict]:
-    return [e for e in entities if e["label"] in ENTITY_TYPES]
+def filter_entities_for_relations(entities: list[dict], filename: str = "") -> list[dict]:
+    malformed = [e for e in entities if not isinstance(e, dict)]
+    if malformed:
+        print(f"  WARNING: {filename} has {len(malformed)} malformed entries (not dicts), skipping them.")
+    return [e for e in entities if isinstance(e, dict) and e.get("label") in ENTITY_TYPES]
 
 
 def extract_relations(chunk: str, entities: list[dict]) -> list[dict]:
     entity_list = "\n".join(f'- {e["text"]} ({e["label"]})' for e in entities)
+    canonical_names = ", ".join(sorted({e["text"] for e in entities}))
     predicates = ", ".join(sorted(VALID_PREDICATES))
     prompt = f"""You are an information extraction assistant building a knowledge graph for films.
 
@@ -84,9 +93,14 @@ You MUST use only these predicates: {predicates}
 
 "from" must always be a PERSON. "to" can be any entity type.
 
+IMPORTANT — use ONLY these canonical entity names (exact spelling, exact case):
+{canonical_names}
+Do not invent names, do not use pronouns, do not use name variants.
+
+The "evidence" field must contain a direct quote from the text showing a clear action or statement that supports the predicate. A mere mention of both entities is not sufficient evidence.
+
 Return ONLY a valid JSON array. No explanation, no markdown, just JSON.
 Each item must have exactly these keys: "from", "from_type", "to", "to_type", "label", "evidence".
-"evidence" must be a short quote from the text supporting the relation.
 
 Entities:
 {entity_list}
@@ -95,13 +109,21 @@ Text:
 {chunk}
 
 Output format:
-[{{"from": "Entity A", "from_type": "PERSON", "to": "Entity B", "to_type": "PERSON", "label": "BETRAYS", "evidence": "short quote from text"}}]
+[{{"from": "Entity A", "from_type": "PERSON", "to": "Entity B", "to_type": "PERSON", "label": "BETRAYS", "evidence": "direct quote from text"}}]
 """
     raw = call_llm(prompt)
     raw = re.sub(r"^```(?:json)?\s*", "", raw.strip())
     raw = re.sub(r"\s*```$", "", raw.strip())
+    raw = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", raw)
     relations = json.loads(raw)
-    return [r for r in relations if r.get("label") in VALID_PREDICATES and r.get("from_type") == "PERSON"]
+    canonical = {e["text"] for e in entities}
+    return [
+        r for r in relations
+        if r.get("label") in VALID_PREDICATES
+        and r.get("from_type") == "PERSON"
+        and r.get("from") in canonical
+        and r.get("to") in canonical
+    ]
 
 
 def deduplicate_relations(relations: list[dict]) -> list[dict]:
@@ -115,12 +137,14 @@ def deduplicate_relations(relations: list[dict]) -> list[dict]:
     return unique
 
 
-def main():
+def main(limit=None):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    for filename in os.listdir(ENTITIES_DIR):
-        if not filename.endswith("_entities.json"):
-            continue
+    files = [f for f in os.listdir(ENTITIES_DIR) if f.endswith("_entities.json")]
+    if limit:
+        files = files[:limit]
+
+    for filename in files:
 
         base = filename.replace("_entities.json", "")
         entities_path = os.path.join(ENTITIES_DIR, filename)
@@ -131,9 +155,13 @@ def main():
             print(f"Skipping {base}: script not found.")
             continue
 
+        if os.path.exists(out_path):
+            print(f"Skipping {base}: already processed.")
+            continue
+
         with open(entities_path, "r", encoding="utf-8") as f:
             entities_data = json.load(f)
-        entities = filter_entities_for_relations(entities_data.get("entities", []))
+        entities = filter_entities_for_relations(entities_data.get("entities", []), filename)
 
         with open(script_path, "r", encoding="utf-8") as f:
             text = f.read()
