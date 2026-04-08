@@ -45,6 +45,10 @@ class TestNormalizeQdrantUrl:
 
     def test_remote_without_scheme_gets_https(self):
         url = _normalize_qdrant_url("my-cluster.qdrant.io", https_hint=False)
+        assert url.startswith("http://")
+
+    def test_remote_with_https_hint_gets_https(self):
+        url = _normalize_qdrant_url("my-cluster.qdrant.io", https_hint=True)
         assert url.startswith("https://")
 
 
