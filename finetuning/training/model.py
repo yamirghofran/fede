@@ -22,13 +22,11 @@ from sentence_transformers import SentenceTransformer
 from sentence_transformers.models import Transformer
 
 from finetuning.config import (
-    DOCUMENT_PREFIX,
     EMBEDDING_MODEL_ID,
     FINETUNING_EMBED_FP16,
     FINETUNING_ENCODE_BATCH_SIZE,
     MAX_DOCUMENT_LENGTH,
     MAX_QUERY_LENGTH,
-    QUERY_PREFIX,
 )
 
 logger = logging.getLogger(__name__)

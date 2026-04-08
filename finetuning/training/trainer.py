@@ -22,14 +22,12 @@ from sentence_transformers.training_args import SentenceTransformerTrainingArgum
 
 from finetuning.config import (
     CACHED_MNRL_MINI_BATCH,
-    DOCUMENT_PREFIX,
     EVAL_K_VALUES,
     LEARNING_RATE,
     LORA_ALPHA,
     LORA_RANK,
     LORA_TARGET_MODULES,
     NUM_EPOCHS,
-    QUERY_PREFIX,
     TRAIN_BATCH_SIZE,
     USE_LORA,
     WARMUP_RATIO,
@@ -196,8 +194,8 @@ def build_evaluator(
         precision_recall_at_k=list(EVAL_K_VALUES),
         map_at_k=[max_k],
         batch_size=64,
-        query_prompt=QUERY_PREFIX,
-        corpus_prompt=DOCUMENT_PREFIX,
+        query_prompt_name="query",
+        corpus_prompt_name="document",
         name="fede-ir-eval",
     )
 
