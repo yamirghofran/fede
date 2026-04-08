@@ -18,7 +18,7 @@ def _normalize_qdrant_url(raw_url: str, https_hint: bool) -> Optional[str]:
         return url
 
     local_hosts = ("localhost", "127.0.0.1", "[::1]")
-    scheme = "http" if url.startswith(local_hosts) else ("https" if https_hint else "https")
+    scheme = "http" if url.startswith(local_hosts) else ("https" if https_hint else "http")
     return f"{scheme}://{url}"
 
 
