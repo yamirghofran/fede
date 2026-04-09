@@ -1,3 +1,17 @@
+"""Script parsing and chunking for FEDE semantic indexing.
+
+This module converts tagged screenplay files into structured chunks
+(scenes and sentences) that can be embedded and indexed in Qdrant.
+The tagged format uses single-letter prefixes:
+    M: - Metadata
+    S: - Scene start/heading
+    N: - Scene description/narrative
+    C: - Character name
+    E: - Dialogue extension (e.g., V.O., O.S.)
+    D: - Dialogue text
+    T: - Transition
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

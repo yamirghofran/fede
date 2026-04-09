@@ -1,3 +1,12 @@
+"""Relation extraction using LLM to build narrative knowledge graphs.
+
+Extracts structured relations between entities from movie scripts using
+an LLM with a constrained predicate vocabulary. Relations capture narrative
+patterns like BETRAYS, TEACHES, SAVES, CONFRONTS between characters.
+
+Processed in chunks to handle long scripts within LLM token limits.
+"""
+
 import os
 import json
 import re
