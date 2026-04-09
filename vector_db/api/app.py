@@ -7,9 +7,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
+from knowledge_graph.graph_models import PatternQueryRequest
 from .models import (
+    GraphBuildRequest,
+    GraphBuildResponse,
+    GraphHealthResponse,
     HealthResponse,
+    MovieGraphResponse,
     MovieSearchResponse,
+    PatternQueryResponse,
     RankedMovieResult,
     RankedSceneResult,
     ReadyResponse,
@@ -101,6 +107,45 @@ def create_app(
             ],
         )
 
+    @app.get("/graph/health", response_model=GraphHealthResponse)
+    def graph_health(request: Request) -> GraphHealthResponse:
+        runtime = _runtime(request)
+        service = runtime.graph_service
+        if service is None:
+            error = None if runtime.graph_startup_error is None else str(runtime.graph_startup_error)
+            return GraphHealthResponse(
+                status="not_ready",
+                db_path=str(runtime.settings.graph_db_path),
+                grafeo_available=False,
+                counts={"movies": 0, "entities": 0, "narrative_edges": 0, "total_edges": 0},
+                last_build=None,
+                error=error,
+            )
+        return service.health()
+
+    @app.post("/graph/build", response_model=GraphBuildResponse)
+    def build_graph(body: GraphBuildRequest, request: Request) -> GraphBuildResponse:
+        service = _graph_service(request)
+        try:
+            return service.build(movie_id=body.movie_id, rebuild=body.rebuild)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.get("/graph/movies/{movie_id}", response_model=MovieGraphResponse)
+    def graph_movie(movie_id: str, request: Request) -> MovieGraphResponse:
+        service = _graph_service(request)
+        try:
+            return service.movie_details(movie_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Unknown movie_id: {movie_id}") from exc
+
+    @app.post("/graph/query/pattern", response_model=PatternQueryResponse)
+    def graph_query_pattern(body: PatternQueryRequest, request: Request) -> PatternQueryResponse:
+        service = _graph_service(request)
+        return service.query_pattern(body)
+
     return app
 
 
@@ -112,6 +157,17 @@ def _service(request: Request) -> SemanticSearchService:
     runtime = _runtime(request)
     try:
         return runtime.ensure_ready()
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+
+def _graph_service(request: Request):
+    runtime = _runtime(request)
+    try:
+        return runtime.ensure_graph_ready()
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

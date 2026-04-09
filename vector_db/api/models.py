@@ -6,6 +6,15 @@ from typing import Any, Dict, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from knowledge_graph.graph_models import (
+    GraphBuildRequest,
+    GraphBuildResponse,
+    GraphHealthResponse,
+    MovieGraphResponse,
+    PatternQueryRequest,
+    PatternQueryResponse,
+)
+
 
 class HealthResponse(BaseModel):
     status: Literal["ok"]

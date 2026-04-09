@@ -82,6 +82,18 @@ class BackendSettings(BaseSettings):
             "FEDE_SEARCH_MOVIE_OVERFETCH_FACTOR",
         ),
     )
+    graph_db_path: Path = Field(
+        default=_ROOT / "data" / "grafeo" / "story_graph.db",
+        validation_alias=AliasChoices("GRAPH_DB_PATH", "FEDE_GRAPH_DB_PATH"),
+    )
+    graph_entities_dir: Path = Field(
+        default=_ROOT / "data" / "knowledge_graph" / "entities_clean",
+        validation_alias=AliasChoices("GRAPH_ENTITIES_DIR", "FEDE_GRAPH_ENTITIES_DIR"),
+    )
+    graph_relations_dir: Path = Field(
+        default=_ROOT / "data" / "knowledge_graph" / "relations",
+        validation_alias=AliasChoices("GRAPH_RELATIONS_DIR", "FEDE_GRAPH_RELATIONS_DIR"),
+    )
 
     @field_validator("embedding_device", mode="before")
     @classmethod
@@ -90,3 +102,10 @@ class BackendSettings(BaseSettings):
             return None
         stripped = value.strip()
         return stripped or None
+
+    @field_validator("graph_db_path", "graph_entities_dir", "graph_relations_dir", mode="before")
+    @classmethod
+    def _coerce_path(cls, value):
+        if value is None or isinstance(value, Path):
+            return value
+        return Path(str(value))

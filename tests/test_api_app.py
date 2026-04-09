@@ -2,6 +2,8 @@
 
 from fastapi.testclient import TestClient
 
+from knowledge_graph.graph_models import GraphBuildResponse, GraphHealthResponse, MovieGraphResponse, PatternQueryResponse
+from knowledge_graph.graph_store import KnowledgeGraphService, MemoryGraphBackend
 from vector_db.api.app import create_app
 from vector_db.api.search import MovieSearchResult
 from vector_db.api.settings import BackendSettings
@@ -79,7 +81,9 @@ class FakeRuntime:
     def __init__(self, ready: bool):
         self.settings = _settings()
         self.search_service = FakeSearchService() if ready else None
+        self.graph_service = FakeGraphService()
         self._ready = ready
+        self.graph_startup_error = None
 
     def initialize(self) -> None:
         return None
@@ -104,6 +108,77 @@ class FakeRuntime:
             "qdrant": {"connected": self._ready, "mode": "server", "config": None},
             "error": None if self._ready else "backend not ready",
         }
+
+    def ensure_graph_ready(self):
+        return self.graph_service
+
+
+class FakeGraphService:
+    def health(self) -> GraphHealthResponse:
+        return GraphHealthResponse(
+            status="ready",
+            db_path="/tmp/story_graph.db",
+            grafeo_available=True,
+            counts={"movies": 1, "entities": 3, "narrative_edges": 2, "total_edges": 5},
+            last_build=None,
+            error=None,
+        )
+
+    def build(self, movie_id=None, rebuild=False) -> GraphBuildResponse:
+        return GraphBuildResponse(
+            mode="movie_reload" if movie_id else "full_rebuild",
+            requested_movie_id=movie_id,
+            movies_loaded=1,
+            nodes_created=4,
+            edges_created=5,
+            dropped_relations=0,
+            dropped_by_reason={},
+            db_path="/tmp/story_graph.db",
+        )
+
+    def movie_details(self, movie_id: str) -> MovieGraphResponse:
+        return MovieGraphResponse(
+            movie_id=movie_id,
+            title="Movie 1",
+            source_file="movie-1.txt",
+            entities=[
+                {"entity_id": "movie-1:person:alice", "canonical_name": "Alice", "entity_type": "PERSON"},
+                {"entity_id": "movie-1:person:bob", "canonical_name": "Bob", "entity_type": "PERSON"},
+            ],
+            outgoing_relations=[
+                {
+                    "relation_id": "rel-1",
+                    "predicate": "TEACHES",
+                    "from_entity_id": "movie-1:person:alice",
+                    "from_name": "Alice",
+                    "to_entity_id": "movie-1:person:bob",
+                    "to_name": "Bob",
+                    "evidence": "Alice teaches Bob.",
+                }
+            ],
+            incoming_relations=[],
+        )
+
+    def query_pattern(self, _body) -> PatternQueryResponse:
+        return PatternQueryResponse(
+            predicates=["TEACHES", "BETRAYS"],
+            results=[
+                {
+                    "movie_id": "movie-1",
+                    "movie_title": "Movie 1",
+                    "score": 2.03,
+                    "path": [
+                        {"entity_id": "a", "entity_name": "Alice", "entity_type": "PERSON"},
+                        {"entity_id": "b", "entity_name": "Bob", "entity_type": "PERSON"},
+                        {"entity_id": "c", "entity_name": "Carol", "entity_type": "PERSON"},
+                    ],
+                    "evidences": [
+                        {"relation_id": "rel-1", "predicate": "TEACHES", "evidence": "Alice teaches Bob."},
+                        {"relation_id": "rel-2", "predicate": "BETRAYS", "evidence": "Bob betrays Carol."},
+                    ],
+                }
+            ],
+        )
 
 
 def test_healthz_returns_ok():
@@ -170,3 +245,48 @@ def test_not_ready_returns_503():
 
     assert ready_response.status_code == 503
     assert search_response.status_code == 503
+
+
+def test_graph_health_returns_status():
+    app = create_app(settings=_settings(), runtime=FakeRuntime(ready=True))
+
+    with TestClient(app) as client:
+        response = client.get("/graph/health")
+
+    assert response.status_code == 200
+    assert response.json()["counts"]["movies"] == 1
+
+
+def test_graph_build_returns_summary():
+    app = create_app(settings=_settings(), runtime=FakeRuntime(ready=True))
+
+    with TestClient(app) as client:
+        response = client.post("/graph/build", json={"movie_id": "movie-1"})
+
+    assert response.status_code == 200
+    assert response.json()["requested_movie_id"] == "movie-1"
+
+
+def test_graph_movie_returns_entities_and_relations():
+    app = create_app(settings=_settings(), runtime=FakeRuntime(ready=True))
+
+    with TestClient(app) as client:
+        response = client.get("/graph/movies/movie-1")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["movie_id"] == "movie-1"
+    assert payload["entities"][0]["canonical_name"] == "Alice"
+    assert payload["outgoing_relations"][0]["predicate"] == "TEACHES"
+
+
+def test_graph_pattern_query_returns_matches():
+    app = create_app(settings=_settings(), runtime=FakeRuntime(ready=True))
+
+    with TestClient(app) as client:
+        response = client.post("/graph/query/pattern", json={"predicates": ["TEACHES", "BETRAYS"], "limit": 3})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["predicates"] == ["TEACHES", "BETRAYS"]
+    assert payload["results"][0]["path"][1]["entity_name"] == "Bob"
