@@ -82,11 +82,42 @@ class BackendSettings(BaseSettings):
             "FEDE_SEARCH_MOVIE_OVERFETCH_FACTOR",
         ),
     )
+    graph_db_path: Path = Field(
+        default=_ROOT / "data" / "grafeo" / "story_graph.db",
+        validation_alias=AliasChoices("GRAPH_DB_PATH", "FEDE_GRAPH_DB_PATH"),
+    )
+    graph_entities_dir: Path = Field(
+        default=_ROOT / "data" / "knowledge_graph" / "entities_clean",
+        validation_alias=AliasChoices("GRAPH_ENTITIES_DIR", "FEDE_GRAPH_ENTITIES_DIR"),
+    )
+    graph_relations_dir: Path = Field(
+        default=_ROOT / "data" / "knowledge_graph" / "relations",
+        validation_alias=AliasChoices("GRAPH_RELATIONS_DIR", "FEDE_GRAPH_RELATIONS_DIR"),
+    )
+    llm_api_key: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("LLM_API_KEY", "FEDE_LLM_API_KEY"),
+    )
+    llm_api_url: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("LLM_API_URL", "FEDE_LLM_API_URL"),
+    )
+    llm_model: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("LLM_MODEL", "FEDE_LLM_MODEL"),
+    )
 
-    @field_validator("embedding_device", mode="before")
+    @field_validator("embedding_device", "llm_api_key", "llm_api_url", "llm_model", mode="before")
     @classmethod
-    def _normalize_device(cls, value: Optional[str]) -> Optional[str]:
+    def _normalize_optional_str(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return None
         stripped = value.strip()
         return stripped or None
+
+    @field_validator("graph_db_path", "graph_entities_dir", "graph_relations_dir", mode="before")
+    @classmethod
+    def _coerce_path(cls, value):
+        if value is None or isinstance(value, Path):
+            return value
+        return Path(str(value))

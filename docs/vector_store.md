@@ -88,7 +88,7 @@ fede/
 ### Prerequisites
 
 - Docker Desktop
-- Python ≥ 3.11 with a virtual environment
+- Python ≥ 3.12 with a virtual environment
 
 ### 1. Start Qdrant
 

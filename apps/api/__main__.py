@@ -10,7 +10,7 @@ from .settings import BackendSettings
 def main() -> None:
     settings = BackendSettings()
     uvicorn.run(
-        "vector_db.api.app:app",
+        "apps.api.app:app",
         host=settings.app_host,
         port=settings.app_port,
         reload=settings.app_reload,

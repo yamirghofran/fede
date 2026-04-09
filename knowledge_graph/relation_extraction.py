@@ -4,6 +4,9 @@ import re
 from openai import OpenAI
 from dotenv import load_dotenv
 
+from .predicates import VALID_ENTITY_TYPES as ENTITY_TYPES
+from .predicates import VALID_PREDICATES
+
 load_dotenv()
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "../data/scripts/filtered")
@@ -17,34 +20,6 @@ LLM_API_URL = os.getenv("LLM_API_URL")
 client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_API_URL)
 
 MAX_CHUNK_CHARS = 4000
-
-# Character-to-character predicates
-CHAR_CHAR_PREDICATES = {
-    "BETRAYS", "TEACHES", "SAVES", "LIES_TO", "CONFRONTS", "ALLIES_WITH",
-    "THREATENS", "RECONCILES_WITH", "KILLS", "AVENGES", "MANIPULATES",
-    "PROTECTS", "SACRIFICES_FOR", "OWES", "LOVES", "HATES", "FORGIVES",
-    "BLAMES", "ABANDONS", "ENVIES",
-}
-
-# Character-to-concept predicates
-CHAR_CONCEPT_PREDICATES = {
-    "WANTS", "LEARNS", "LOSES", "DISCOVERS", "BELIEVES", "DOUBTS",
-    "FEARS", "REVEALS", "REJECTS", "MASTERS", "INHERITS", "SEEKS",
-    "ACCEPTS", "POSSESSES", "DESTROYS", "CREATES",
-}
-
-# Transformation predicates
-TRANSFORMATION_PREDICATES = {
-    "TRANSFORMS_INTO", "CORRUPTS", "REDEEMS", "REALIZES",
-}
-
-# Social/family predicates
-SOCIAL_PREDICATES = {
-    "MARRIED_TO", "PARENT_OF", "CHILD_OF", "SIBLINGS_WITH", "WORKS_FOR", "LEADS",
-}
-
-VALID_PREDICATES = CHAR_CHAR_PREDICATES | CHAR_CONCEPT_PREDICATES | TRANSFORMATION_PREDICATES | SOCIAL_PREDICATES
-
 
 def chunk_text(text: str, max_chars: int = MAX_CHUNK_CHARS) -> list[str]:
     paragraphs = text.split("\n\n")
@@ -67,9 +42,6 @@ def call_llm(prompt: str) -> str:
         max_tokens=2048,
     )
     return response.choices[0].message.content
-
-
-ENTITY_TYPES = {"PERSON", "EVENT", "ORG", "NORP", "GPE", "LOC", "FAC", "WORK_OF_ART"}
 
 
 def filter_entities_for_relations(entities: list[dict], filename: str = "") -> list[dict]:

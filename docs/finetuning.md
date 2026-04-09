@@ -148,7 +148,7 @@ finetuning/
 
 ## 4. Prerequisites
 
-- Python >= 3.9 with the project installed: `pip install -e .`
+- Python >= 3.12 with the project installed: `pip install -e .`
 - DVC data pulled: `dvc pull` (provides tagged scripts and metadata)
 - An OpenRouter API key (for synthetic query generation)
 - Docker with Qdrant running (only needed for Qdrant-based evaluation and indexing)
