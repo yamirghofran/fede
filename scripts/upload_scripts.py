@@ -21,7 +21,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import math
 import multiprocessing as mp
 import os
 import sys
@@ -39,6 +38,7 @@ from dotenv import load_dotenv
 load_dotenv(ROOT / ".env", override=False)
 
 import numpy as np
+from peft import PeftModel
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
@@ -105,9 +105,19 @@ def _resolve_device(device_arg: str) -> str:
     return "cpu"
 
 
-def _load_model(model_name: str, device: str) -> SentenceTransformer:
-    log.info("Loading embedding model '%s' on device '%s' ...", model_name, device)
-    model = SentenceTransformer(model_name, device=device)
+BASE_MODEL_NAME = "google/embeddinggemma-300m"
+
+
+def _load_model(adapter_name: str, device: str) -> SentenceTransformer:
+    """Load base EmbeddingGemma model then apply the LoRA adapter.
+
+    SentenceTransformer(adapter_name) silently drops LoRA weights, so we must
+    load the base model first and apply the adapter with PEFT explicitly.
+    """
+    log.info("Loading base model '%s' on device '%s' ...", BASE_MODEL_NAME, device)
+    model = SentenceTransformer(BASE_MODEL_NAME, device=device)
+    log.info("Applying LoRA adapter '%s' ...", adapter_name)
+    model[0].auto_model = PeftModel.from_pretrained(model[0].auto_model, adapter_name)
     log.info(
         "Model loaded — vector size: %d, max seq length: %d",
         model.get_sentence_embedding_dimension(),
@@ -140,6 +150,7 @@ def _encode(
         vecs = model.encode(
             texts,
             batch_size=batch_size,
+            prompt_name="document",
             normalize_embeddings=True,
             convert_to_numpy=True,
             show_progress_bar=False,
@@ -404,12 +415,25 @@ def main() -> None:
         n_workers = min(args.workers, len(movies_to_process))
         log.info("Spawning %d worker processes ...", n_workers)
 
-        # Distribute movies as evenly as possible across workers
-        chunk_size = math.ceil(len(movies_to_process) / n_workers)
-        chunks = [
-            movies_to_process[i : i + chunk_size]
-            for i in range(0, len(movies_to_process), chunk_size)
-        ]
+        # Sort by tagged-file size (largest first) so no single worker ends up
+        # with all the huge scripts, then distribute round-robin so each worker
+        # gets an interleaved mix of large and small movies.
+        def _tagged_size(item: Tuple) -> int:
+            _, meta = item
+            fn = meta.get("parsed", {}).get("tagged")
+            if not fn:
+                return 0
+            p = TAGGED_DIR / fn
+            try:
+                return p.stat().st_size
+            except OSError:
+                return 0
+
+        movies_to_process.sort(key=_tagged_size, reverse=True)
+
+        chunks: List[List] = [[] for _ in range(n_workers)]
+        for idx, movie in enumerate(movies_to_process):
+            chunks[idx % n_workers].append(movie)
 
         # How many PyTorch threads each worker should use
         try:
