@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass
 from typing import List, Optional
@@ -17,6 +18,8 @@ from .schemas import (
     ScenePayload,
     SentencePayload,
 )
+
+log = logging.getLogger(__name__)
 
 # Stable namespace so deterministic UUIDs are consistent across runs and
 # environments regardless of Python's hash seed.
@@ -60,6 +63,42 @@ class SentenceRecord:
     position_in_script: int
     embedding: List[float]
     character_name: Optional[str] = None
+
+
+def _upsert_with_split(
+    client,
+    collection_name: str,
+    points: List[PointStruct],
+    wait: bool,
+    _depth: int = 0,
+) -> None:
+    """Upsert points, splitting the batch in half on payload-too-large errors.
+
+    Qdrant caps individual HTTP request bodies at 32 MB.  Very long scripts can
+    exceed this with a single-movie batch.  Splitting is safe because every
+    point has a deterministic UUID: the two sub-batches contain *disjoint* IDs,
+    so the second POST never touches the points written by the first.
+
+    Recursion stops at depth 4 (≤ 16 sub-batches).  If a single-point payload
+    is still too large (theoretically impossible with our data) the exception
+    propagates to the caller.
+    """
+    if not points:
+        return
+    try:
+        client.upsert(collection_name=collection_name, points=points, wait=wait)
+    except Exception as exc:
+        if "larger than allowed" in str(exc) and len(points) > 1 and _depth < 4:
+            mid = len(points) // 2
+            log.warning(
+                "Payload too large (%d points) — splitting into two halves (depth %d).",
+                len(points),
+                _depth + 1,
+            )
+            _upsert_with_split(client, collection_name, points[:mid], wait, _depth + 1)
+            _upsert_with_split(client, collection_name, points[mid:], wait, _depth + 1)
+        else:
+            raise
 
 
 class ScriptIndexer:
@@ -188,11 +227,7 @@ class ScriptIndexer:
             )
             for r in records
         ]
-        self._scenes.client.upsert(
-            collection_name=self._scenes.collection_name,
-            points=points,
-            wait=False,
-        )
+        _upsert_with_split(self._scenes.client, self._scenes.collection_name, points, wait=False)
 
     def _batch_upsert_sentences(self, records: List[SentenceRecord]) -> None:
         points = [
@@ -212,11 +247,7 @@ class ScriptIndexer:
             )
             for r in records
         ]
-        self._sentences.client.upsert(
-            collection_name=self._sentences.collection_name,
-            points=points,
-            wait=False,
-        )
+        _upsert_with_split(self._sentences.client, self._sentences.collection_name, points, wait=False)
 
 
 def index_movie(
