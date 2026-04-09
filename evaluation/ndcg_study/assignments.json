@@ -1,0 +1,602 @@
+{
+  "config": {
+    "methods": [
+      "bm25",
+      "hybrid"
+    ],
+    "n_people": 16,
+    "queries_per_person": 8,
+    "top_k_per_engine": 5,
+    "seed": 42
+  },
+  "assignments": [
+    {
+      "person_id": "P01",
+      "assignments": [
+        {
+          "query_id": "30",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "8",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "17",
+          "method": "bm25"
+        },
+        {
+          "query_id": "32",
+          "method": "bm25"
+        },
+        {
+          "query_id": "10",
+          "method": "bm25"
+        },
+        {
+          "query_id": "13",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "18",
+          "method": "bm25"
+        },
+        {
+          "query_id": "7",
+          "method": "hybrid"
+        }
+      ]
+    },
+    {
+      "person_id": "P02",
+      "assignments": [
+        {
+          "query_id": "32",
+          "method": "bm25"
+        },
+        {
+          "query_id": "29",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "19",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "9",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "23",
+          "method": "bm25"
+        },
+        {
+          "query_id": "24",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "1",
+          "method": "bm25"
+        },
+        {
+          "query_id": "16",
+          "method": "bm25"
+        }
+      ]
+    },
+    {
+      "person_id": "P03",
+      "assignments": [
+        {
+          "query_id": "33",
+          "method": "bm25"
+        },
+        {
+          "query_id": "11",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "17",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "19",
+          "method": "bm25"
+        },
+        {
+          "query_id": "5",
+          "method": "bm25"
+        },
+        {
+          "query_id": "1",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "3",
+          "method": "bm25"
+        },
+        {
+          "query_id": "23",
+          "method": "hybrid"
+        }
+      ]
+    },
+    {
+      "person_id": "P04",
+      "assignments": [
+        {
+          "query_id": "2",
+          "method": "bm25"
+        },
+        {
+          "query_id": "6",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "3",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "19",
+          "method": "bm25"
+        },
+        {
+          "query_id": "8",
+          "method": "bm25"
+        },
+        {
+          "query_id": "16",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "28",
+          "method": "bm25"
+        },
+        {
+          "query_id": "25",
+          "method": "hybrid"
+        }
+      ]
+    },
+    {
+      "person_id": "P05",
+      "assignments": [
+        {
+          "query_id": "3",
+          "method": "bm25"
+        },
+        {
+          "query_id": "9",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "8",
+          "method": "bm25"
+        },
+        {
+          "query_id": "10",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "16",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "30",
+          "method": "bm25"
+        },
+        {
+          "query_id": "29",
+          "method": "bm25"
+        },
+        {
+          "query_id": "33",
+          "method": "hybrid"
+        }
+      ]
+    },
+    {
+      "person_id": "P06",
+      "assignments": [
+        {
+          "query_id": "7",
+          "method": "bm25"
+        },
+        {
+          "query_id": "10",
+          "method": "bm25"
+        },
+        {
+          "query_id": "21",
+          "method": "bm25"
+        },
+        {
+          "query_id": "31",
+          "method": "bm25"
+        },
+        {
+          "query_id": "2",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "15",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "5",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "22",
+          "method": "hybrid"
+        }
+      ]
+    },
+    {
+      "person_id": "P07",
+      "assignments": [
+        {
+          "query_id": "22",
+          "method": "bm25"
+        },
+        {
+          "query_id": "27",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "11",
+          "method": "bm25"
+        },
+        {
+          "query_id": "28",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "26",
+          "method": "bm25"
+        },
+        {
+          "query_id": "4",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "7",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "24",
+          "method": "bm25"
+        }
+      ]
+    },
+    {
+      "person_id": "P08",
+      "assignments": [
+        {
+          "query_id": "15",
+          "method": "bm25"
+        },
+        {
+          "query_id": "2",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "7",
+          "method": "bm25"
+        },
+        {
+          "query_id": "25",
+          "method": "bm25"
+        },
+        {
+          "query_id": "12",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "3",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "11",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "9",
+          "method": "bm25"
+        }
+      ]
+    },
+    {
+      "person_id": "P09",
+      "assignments": [
+        {
+          "query_id": "9",
+          "method": "bm25"
+        },
+        {
+          "query_id": "5",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "15",
+          "method": "bm25"
+        },
+        {
+          "query_id": "10",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "25",
+          "method": "bm25"
+        },
+        {
+          "query_id": "26",
+          "method": "bm25"
+        },
+        {
+          "query_id": "18",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "23",
+          "method": "hybrid"
+        }
+      ]
+    },
+    {
+      "person_id": "P10",
+      "assignments": [
+        {
+          "query_id": "11",
+          "method": "bm25"
+        },
+        {
+          "query_id": "26",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "6",
+          "method": "bm25"
+        },
+        {
+          "query_id": "28",
+          "method": "bm25"
+        },
+        {
+          "query_id": "25",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "14",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "13",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "16",
+          "method": "bm25"
+        }
+      ]
+    },
+    {
+      "person_id": "P11",
+      "assignments": [
+        {
+          "query_id": "6",
+          "method": "bm25"
+        },
+        {
+          "query_id": "2",
+          "method": "bm25"
+        },
+        {
+          "query_id": "30",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "4",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "13",
+          "method": "bm25"
+        },
+        {
+          "query_id": "17",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "14",
+          "method": "bm25"
+        },
+        {
+          "query_id": "31",
+          "method": "hybrid"
+        }
+      ]
+    },
+    {
+      "person_id": "P12",
+      "assignments": [
+        {
+          "query_id": "28",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "12",
+          "method": "bm25"
+        },
+        {
+          "query_id": "18",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "21",
+          "method": "bm25"
+        },
+        {
+          "query_id": "13",
+          "method": "bm25"
+        },
+        {
+          "query_id": "27",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "29",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "17",
+          "method": "bm25"
+        }
+      ]
+    },
+    {
+      "person_id": "P13",
+      "assignments": [
+        {
+          "query_id": "14",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "27",
+          "method": "bm25"
+        },
+        {
+          "query_id": "21",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "1",
+          "method": "bm25"
+        },
+        {
+          "query_id": "8",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "15",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "22",
+          "method": "bm25"
+        },
+        {
+          "query_id": "23",
+          "method": "bm25"
+        }
+      ]
+    },
+    {
+      "person_id": "P14",
+      "assignments": [
+        {
+          "query_id": "32",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "5",
+          "method": "bm25"
+        },
+        {
+          "query_id": "31",
+          "method": "bm25"
+        },
+        {
+          "query_id": "1",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "27",
+          "method": "bm25"
+        },
+        {
+          "query_id": "29",
+          "method": "bm25"
+        },
+        {
+          "query_id": "21",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "22",
+          "method": "hybrid"
+        }
+      ]
+    },
+    {
+      "person_id": "P15",
+      "assignments": [
+        {
+          "query_id": "6",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "14",
+          "method": "bm25"
+        },
+        {
+          "query_id": "24",
+          "method": "bm25"
+        },
+        {
+          "query_id": "33",
+          "method": "bm25"
+        },
+        {
+          "query_id": "18",
+          "method": "bm25"
+        },
+        {
+          "query_id": "12",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "26",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "19",
+          "method": "hybrid"
+        }
+      ]
+    },
+    {
+      "person_id": "P16",
+      "assignments": [
+        {
+          "query_id": "31",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "4",
+          "method": "bm25"
+        },
+        {
+          "query_id": "32",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "12",
+          "method": "bm25"
+        },
+        {
+          "query_id": "24",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "33",
+          "method": "hybrid"
+        },
+        {
+          "query_id": "30",
+          "method": "bm25"
+        }
+      ]
+    }
+  ]
+}

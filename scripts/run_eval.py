@@ -70,11 +70,7 @@ def _print_result(method: str, n_runs: int, metrics: dict, k_values: list):
 
 def _save_csv(rows: list, output_path: str, k_values: list):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    fieldnames = (
-        ["method", "n_runs", "total_queries"]
-        + [f"accuracy@{k}" for k in k_values]
-        + ["mrr", "median_rank", "failed_queries", "evaluated_at"]
-    )
+    fieldnames = ["method", "n_runs", "total_queries"] + [f"accuracy@{k}" for k in k_values]
     with open(output_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -155,10 +151,6 @@ def main():
             "n_runs": n_runs,
             "total_queries": metrics["total_queries"],
             **{f"accuracy@{k}": round(summary[f"accuracy_at_{k}"], 4) for k in args.k_values},
-            "mrr": summary["mrr"],
-            "median_rank": summary["median_rank"],
-            "failed_queries": metrics["failed_queries"]["count"],
-            "evaluated_at": ts,
         })
 
     _save_csv(csv_rows, output_path, args.k_values)

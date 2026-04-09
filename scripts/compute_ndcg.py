@@ -224,9 +224,9 @@ def main():
         raters_per_engine[r["engine"]].add(r["person_id"])
         queries_per_engine[r["engine"]].add(r["query_id"])
 
-    print("\n" + "─" * 60)
-    print(f"{'Engine':<15} {'Queries':>8} {'Raters':>7} {'NDCG@' + str(args.k):>10} {'Std':>8} {'Kripp. α':>10}")
-    print("─" * 60)
+    print("\n" + "-" * 35)
+    print(f"{'Engine':<15} {'NDCG@' + str(args.k):>10}")
+    print("-" * 35)
 
     ts = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     csv_rows = []
@@ -240,27 +240,21 @@ def main():
         n_queries = len(queries_per_engine[engine])
         n_raters = len(raters_per_engine[engine])
 
-        alpha_str = f"{alpha:.4f}" if not math.isnan(alpha) else "N/A"
-        print(f"{engine:<15} {n_queries:>8} {n_raters:>7} {mean_ndcg:>10.4f} {std_ndcg:>8.4f} {alpha_str:>10}")
+        print(f"{engine:<15} {mean_ndcg*100:>9.1f}%")
 
         csv_rows.append({
             "engine": engine,
             "n_queries": n_queries,
             "n_raters": n_raters,
             f"ndcg@{args.k}": round(mean_ndcg, 4),
-            f"ndcg@{args.k}_std": round(std_ndcg, 4),
-            "krippendorff_alpha": round(alpha, 4) if not math.isnan(alpha) else "N/A",
-            "evaluated_at": ts,
         })
 
-    print("─" * 60)
-    print("\nKrippendorff's α interpretation: <0.2 poor, 0.4 fair, 0.6 good, 0.8 excellent")
+    print("-" * 35)
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     fieldnames = [
         "engine", "n_queries", "n_raters",
-        f"ndcg@{args.k}", f"ndcg@{args.k}_std",
-        "krippendorff_alpha", "evaluated_at",
+        f"ndcg@{args.k}",
     ]
     with open(output_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)

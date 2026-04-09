@@ -1,29 +1,3 @@
-"""
-Generate human annotation batches for NDCG@5 evaluation.
-
-Experimental design:
-  - N_PEOPLE people, each grades QUERIES_PER_PERSON queries
-  - Each person sees results from different engines (mixed design)
-  - With 2 engines: each person gets QUERIES_PER_PERSON/2 queries per engine
-  - We need N_PEOPLE * QUERIES_PER_PERSON / n_engines * 2 unique queries
-    (so each (query, engine) pair is rated by 2 people)
-
-For default 16 people, 8 queries/person, 2 engines:
-  - 16 * 8 / 2 = 64 ratings per engine
-  - 64 / 2 raters = 32 unique queries
-
-Output files:
-  evaluation/ndcg_study/assignments.json       — who sees what
-  evaluation/ndcg_study/grading_template.csv   — blank CSV for annotators
-
-Usage:
-    # BM25 only (no API needed)
-    python scripts/generate_ndcg_batches.py --methods bm25 --people 16 --queries-per-person 8
-
-    # BM25 + hybrid (requires API running)
-    python scripts/generate_ndcg_batches.py --methods bm25 hybrid --people 16 --queries-per-person 8
-"""
-
 import argparse
 import csv
 import json
