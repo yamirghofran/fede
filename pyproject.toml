@@ -34,6 +34,7 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
     "ipykernel>=6.31.0",
+    "peft>=0.17.1",
 ]
 
 [project.optional-dependencies]
