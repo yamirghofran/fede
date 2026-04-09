@@ -13,8 +13,6 @@ from .settings import BackendSettings
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
 
-BASE_MODEL_NAME = "google/embeddinggemma-300m"
-
 logger = logging.getLogger(__name__)
 
 
@@ -53,14 +51,8 @@ class QueryEmbedder:
 
             kwargs["model_kwargs"] = {"torch_dtype": torch.float16}
 
-        from peft import PeftModel
-
-        logger.info("Loading base model '%s' ...", BASE_MODEL_NAME)
-        model = SentenceTransformer(BASE_MODEL_NAME, **kwargs)
-        logger.info("Applying LoRA adapter '%s' ...", self.settings.embedding_model_id)
-        model[0].auto_model = PeftModel.from_pretrained(
-            model[0].auto_model, self.settings.embedding_model_id
-        )
+        logger.info("Loading embedding model: %s", self.settings.embedding_model_id)
+        model = SentenceTransformer(self.settings.embedding_model_id, **kwargs)
         dim = model.get_sentence_embedding_dimension()
         if dim is not None and dim != self.vector_size:
             raise ValueError(
@@ -86,7 +78,7 @@ class QueryEmbedder:
         if callable(encode_fn):
             embedding = encode_fn([cleaned], **encode_kwargs)
         else:
-            embedding = self.model.encode([cleaned], prompt_name="query", **encode_kwargs)
+            embedding = self.model.encode([cleaned], **encode_kwargs)
 
         vector = np.asarray(embedding)[0]
         if vector.shape[0] != self.vector_size:
