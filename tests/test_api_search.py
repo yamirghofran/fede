@@ -1,14 +1,14 @@
-"""Tests for vector_db.api.search."""
+"""Tests for apps.api.search."""
 
 from unittest.mock import MagicMock
 
 import pytest
 
 from knowledge_graph.graph_models import PatternMatchResponse, PatternQueryRequest, PatternStep, PatternEdgeEvidence
-from vector_db.api.hybrid import HybridQueryService, TranslationResult
-from vector_db.api.models import HybridQueryRequest
-from vector_db.api.search import SemanticSearchService
-from vector_db.api.settings import BackendSettings
+from apps.api.hybrid import HybridQueryService, TranslationResult
+from apps.api.models import HybridQueryRequest
+from apps.api.search import SemanticSearchService
+from apps.api.settings import BackendSettings
 from vector_db.retrieval import SceneResult
 
 

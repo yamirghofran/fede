@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from vector_db.api.settings import BackendSettings
+from apps.api.settings import BackendSettings
 
 from .graph_store import KnowledgeGraphService
 

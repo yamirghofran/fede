@@ -1,11 +1,11 @@
-"""Tests for vector_db.api.app."""
+"""Tests for apps.api.app."""
 
 from fastapi.testclient import TestClient
 
 from knowledge_graph.graph_models import GraphBuildResponse, GraphHealthResponse, MovieGraphResponse, PatternQueryResponse
-from vector_db.api.app import create_app
-from vector_db.api.search import MovieSearchResult
-from vector_db.api.settings import BackendSettings
+from apps.api.app import create_app
+from apps.api.search import MovieSearchResult
+from apps.api.settings import BackendSettings
 from vector_db.retrieval import SceneResult
 
 
@@ -291,6 +291,22 @@ def test_not_ready_returns_503():
 
     assert ready_response.status_code == 503
     assert search_response.status_code == 503
+
+
+def test_cors_preflight_allows_any_origin():
+    app = create_app(settings=_settings(), runtime=FakeRuntime(ready=True))
+
+    with TestClient(app) as client:
+        response = client.options(
+            "/search",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "*"
 
 
 def test_graph_health_returns_status():
