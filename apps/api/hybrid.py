@@ -97,6 +97,7 @@ User query:
             model=self._settings.llm_model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=500,
+            temperature=0,
         )
         return response.choices[0].message.content or ""
 

@@ -3,9 +3,10 @@ Retrieval Evaluation Metrics for Movie Search Engine
 Following Mustafa et al. [4] - IJECE Vol. 14, No. 6
 """
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 from datetime import datetime
 import json
+import math
 
 
 def accuracy_at_k(retrieved: List[Dict], target_movie_key: str, k: int) -> float:
@@ -113,6 +114,71 @@ def evaluate_batch(
             "methodology": "Mustafa et al. [4] - IJECE Vol. 14, No. 6",
             "evaluated_at": datetime.utcnow().isoformat() + "Z",
         },
+    }
+
+
+def ndcg_at_k(retrieved: List[Dict], relevance_judgments: Dict[str, float], k: int) -> float:
+    """
+    Calculate NDCG@k for a single query.
+
+    Args:
+        retrieved: Ordered list of results with 'movie_key' field
+        relevance_judgments: {movie_key: grade} where grade ∈ {0.0, 1.0, 2.0}
+        k: cutoff
+
+    Returns:
+        NDCG@k score (0.0 if no relevant documents in judgments)
+    """
+    top_k = retrieved[:k]
+
+    # DCG: sum of rel_i / log2(i+1) for i=1..k
+    dcg = 0.0
+    for i, result in enumerate(top_k, start=1):
+        rel = relevance_judgments.get(result["movie_key"], 0.0)
+        dcg += rel / math.log2(i + 1)
+
+    # IDCG: ideal ranking (sort grades descending)
+    ideal_grades = sorted(relevance_judgments.values(), reverse=True)[:k]
+    idcg = sum(g / math.log2(i + 1) for i, g in enumerate(ideal_grades, start=1))
+
+    if idcg == 0.0:
+        return 0.0
+    return dcg / idcg
+
+
+def evaluate_batch_ndcg(
+    queries: List[Dict],
+    retrieval_results: List[List[Dict]],
+    relevance_judgments_per_query: Dict[str, Dict[str, float]],
+    k: int = 5,
+) -> Dict:
+    """
+    Compute mean NDCG@k over a batch.
+
+    Args:
+        queries: List of query dicts with 'id' field
+        retrieval_results: Retrieval results per query (same order as queries)
+        relevance_judgments_per_query: {query_id: {movie_key: grade}}
+        k: cutoff
+
+    Returns:
+        Dict with mean_ndcg, per_query scores, and metadata
+    """
+    scores = []
+    per_query = []
+
+    for query, results in zip(queries, retrieval_results):
+        qid = str(query["id"])
+        judgments = relevance_judgments_per_query.get(qid, {})
+        score = ndcg_at_k(results, judgments, k)
+        scores.append(score)
+        per_query.append({"query_id": qid, "movie_key": query["movie_key"], f"ndcg@{k}": round(score, 4)})
+
+    mean_score = sum(scores) / len(scores) if scores else 0.0
+    return {
+        f"mean_ndcg@{k}": round(mean_score, 4),
+        "n_queries": len(queries),
+        "per_query": per_query,
     }
 
 
