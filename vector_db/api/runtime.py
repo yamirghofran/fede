@@ -13,6 +13,7 @@ from vector_db.retrieval import ScriptRetriever
 from vector_db.schemas import CollectionNames
 
 from .embedder import QueryEmbedder
+from .hybrid import HybridQueryService
 from .search import SemanticSearchService
 from .settings import BackendSettings
 
@@ -29,6 +30,7 @@ class BackendRuntime:
         self.settings = settings or BackendSettings()
         self.search_service = search_service
         self.graph_service = graph_service
+        self.hybrid_service: Optional[HybridQueryService] = None
         self.qdrant_config: Optional[QdrantConfig] = None
         self.startup_error: Optional[Exception] = None
         self.graph_startup_error: Optional[Exception] = None
@@ -52,6 +54,11 @@ class BackendRuntime:
                 self.graph_service = None
                 self.graph_startup_error = exc
         if self.search_service is not None:
+            self.hybrid_service = HybridQueryService(
+                settings=self.settings,
+                semantic_service=self.search_service,
+                graph_service=self.graph_service,
+            )
             self.startup_error = None
             return
 
@@ -86,10 +93,20 @@ class BackendRuntime:
                     embedder=embedder,
                     settings=self.settings,
                 )
+                self.hybrid_service = HybridQueryService(
+                    settings=self.settings,
+                    semantic_service=self.search_service,
+                    graph_service=self.graph_service,
+                )
                 self.startup_error = None
             except Exception as exc:
                 self.qdrant_config = None
                 self.search_service = None
+                self.hybrid_service = HybridQueryService(
+                    settings=self.settings,
+                    semantic_service=None,
+                    graph_service=self.graph_service,
+                )
                 self.startup_error = exc
 
     def shutdown(self) -> None:
@@ -113,6 +130,16 @@ class BackendRuntime:
                 message = str(self.graph_startup_error)
             raise RuntimeError(message)
         return self.graph_service
+
+    def get_hybrid_service(self) -> HybridQueryService:
+        self.initialize()
+        if self.hybrid_service is None:
+            self.hybrid_service = HybridQueryService(
+                settings=self.settings,
+                semantic_service=self.search_service,
+                graph_service=self.graph_service,
+            )
+        return self.hybrid_service
 
     @property
     def error_message(self) -> str:

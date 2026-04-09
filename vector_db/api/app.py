@@ -13,6 +13,8 @@ from .models import (
     GraphBuildResponse,
     GraphHealthResponse,
     HealthResponse,
+    HybridQueryRequest,
+    HybridQueryResponse,
     MovieGraphResponse,
     MovieSearchResponse,
     PatternQueryResponse,
@@ -106,6 +108,14 @@ def create_app(
                 for rank, hit in enumerate(results, start=1)
             ],
         )
+
+    @app.post("/query", response_model=HybridQueryResponse)
+    def hybrid_query(body: HybridQueryRequest, request: Request) -> HybridQueryResponse:
+        service = _runtime(request).get_hybrid_service()
+        try:
+            return service.query(body)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     @app.get("/graph/health", response_model=GraphHealthResponse)
     def graph_health(request: Request) -> GraphHealthResponse:

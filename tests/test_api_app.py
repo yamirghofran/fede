@@ -3,7 +3,6 @@
 from fastapi.testclient import TestClient
 
 from knowledge_graph.graph_models import GraphBuildResponse, GraphHealthResponse, MovieGraphResponse, PatternQueryResponse
-from knowledge_graph.graph_store import KnowledgeGraphService, MemoryGraphBackend
 from vector_db.api.app import create_app
 from vector_db.api.search import MovieSearchResult
 from vector_db.api.settings import BackendSettings
@@ -82,6 +81,7 @@ class FakeRuntime:
         self.settings = _settings()
         self.search_service = FakeSearchService() if ready else None
         self.graph_service = FakeGraphService()
+        self.hybrid_service = FakeHybridService()
         self._ready = ready
         self.graph_startup_error = None
 
@@ -111,6 +111,9 @@ class FakeRuntime:
 
     def ensure_graph_ready(self):
         return self.graph_service
+
+    def get_hybrid_service(self):
+        return self.hybrid_service
 
 
 class FakeGraphService:
@@ -179,6 +182,49 @@ class FakeGraphService:
                 }
             ],
         )
+
+
+class FakeHybridService:
+    def query(self, _body):
+        return {
+            "query": "mentor betrays student",
+            "top_k": 3,
+            "sentence_pool": 50,
+            "graph_limit": 3,
+            "strategy": "hybrid",
+            "translation": {
+                "status": "translated",
+                "pattern": {"predicates": ["TEACHES", "BETRAYS"], "entity_types": None, "movie_ids": None, "contains_entities": None, "limit": 3},
+                "error": None,
+            },
+            "results": [
+                {
+                    "rank": 1,
+                    "movie_id": "movie-1",
+                    "movie_title": "Movie 1",
+                    "score": 0.95,
+                    "semantic_score": 0.91,
+                    "graph_score": 2.03,
+                    "best_scene": {
+                        "point_id": "point-scene-a",
+                        "scene_id": "scene-a",
+                        "scene_index": 1,
+                        "scene_title": "title scene-a",
+                        "score": 0.91,
+                        "text": "text for scene-a",
+                        "character_names": ["ALICE", "BOB"],
+                    },
+                    "graph_matches": [
+                        {
+                            "score": 2.03,
+                            "path_entities": ["Alice", "Bob", "Carol"],
+                            "predicates": ["TEACHES", "BETRAYS"],
+                            "evidences": ["Alice teaches Bob.", "Bob betrays Carol."],
+                        }
+                    ],
+                }
+            ],
+        }
 
 
 def test_healthz_returns_ok():
@@ -290,3 +336,16 @@ def test_graph_pattern_query_returns_matches():
     payload = response.json()
     assert payload["predicates"] == ["TEACHES", "BETRAYS"]
     assert payload["results"][0]["path"][1]["entity_name"] == "Bob"
+
+
+def test_hybrid_query_returns_merged_results():
+    app = create_app(settings=_settings(), runtime=FakeRuntime(ready=True))
+
+    with TestClient(app) as client:
+        response = client.post("/query", json={"query": "mentor betrays student", "top_k": 3})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["strategy"] == "hybrid"
+    assert payload["translation"]["status"] == "translated"
+    assert payload["results"][0]["graph_matches"][0]["predicates"] == ["TEACHES", "BETRAYS"]
