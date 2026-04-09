@@ -125,7 +125,6 @@ venv.bak/
 .aws/
 credentials
 
-
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -133,6 +132,11 @@ credentials
 # Rope project settings
 .ropeproject
 
+# Evaluation checkpoint files
+evaluation_dataset/generated_queries_checkpoint.json
+evaluation_dataset/generated_queries_checkpoint.json.tmp
+evaluation_dataset/*_backup.json
+evaluation_dataset/*_backup.json.tmp
 # mkdocs documentation
 /site
 
