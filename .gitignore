@@ -67,6 +67,7 @@ db.sqlite3-journal
 datasets/
 # data/  ← Temporarily commented out to allow DVC tracking
 !data/**/*.dvc
+/scripts/.indexed_movies.txt
 
 # Flask stuff:
 instance/
@@ -83,6 +84,9 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+
+# Local fine-tuned model weights (large binary files)
+notebooks/fede-embeddinggemma/
 
 # IPython
 profile_default/
@@ -121,7 +125,6 @@ venv.bak/
 .aws/
 credentials
 
-
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -129,6 +132,11 @@ credentials
 # Rope project settings
 .ropeproject
 
+# Evaluation checkpoint files
+evaluation_dataset/generated_queries_checkpoint.json
+evaluation_dataset/generated_queries_checkpoint.json.tmp
+evaluation_dataset/*_backup.json
+evaluation_dataset/*_backup.json.tmp
 # mkdocs documentation
 /site
 
