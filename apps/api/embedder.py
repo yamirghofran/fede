@@ -13,9 +13,17 @@ from .settings import BackendSettings
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
 
-BASE_MODEL_NAME = "google/embeddinggemma-300m"
-
 logger = logging.getLogger(__name__)
+
+
+def _is_peft_adapter(model_id: str, token: str | None = None) -> bool:
+    """Check if a HuggingFace repo contains a PEFT adapter."""
+    try:
+        from huggingface_hub import hf_hub_download
+        hf_hub_download(model_id, "adapter_config.json", token=token)
+        return True
+    except Exception:
+        return False
 
 
 class QueryEmbedder:
@@ -38,6 +46,7 @@ class QueryEmbedder:
         if self._model is not None:
             return self._model
 
+        model_id = self.settings.embedding_model_id
         kwargs = {}
         hf_token = (
             os.getenv("HF_TOKEN")
@@ -51,16 +60,27 @@ class QueryEmbedder:
         if self.settings.embedding_fp16:
             import torch
 
-            kwargs["model_kwargs"] = {"torch_dtype": torch.float16}
+            kwargs["model_kwargs"] = {"torch_dtype": torch.bfloat16}
 
-        from peft import PeftModel
+        if _is_peft_adapter(model_id, token=hf_token):
+            import json
+            from huggingface_hub import hf_hub_download
+            from peft import PeftModel
 
-        logger.info("Loading base model '%s' ...", BASE_MODEL_NAME)
-        model = SentenceTransformer(BASE_MODEL_NAME, **kwargs)
-        logger.info("Applying LoRA adapter '%s' ...", self.settings.embedding_model_id)
-        model[0].auto_model = PeftModel.from_pretrained(
-            model[0].auto_model, self.settings.embedding_model_id
-        )
+            adapter_cfg_path = hf_hub_download(model_id, "adapter_config.json", token=hf_token)
+            with open(adapter_cfg_path, "r", encoding="utf-8") as f:
+                base_model_name = json.load(f)["base_model_name_or_path"]
+
+            logger.info("Loading base model '%s' ...", base_model_name)
+            model = SentenceTransformer(base_model_name, **kwargs)
+            logger.info("Applying LoRA adapter '%s' ...", model_id)
+            model[0].auto_model = PeftModel.from_pretrained(
+                model[0].auto_model, model_id, token=hf_token
+            )
+        else:
+            logger.info("Loading embedding model: %s", model_id)
+            model = SentenceTransformer(model_id, **kwargs)
+
         dim = model.get_sentence_embedding_dimension()
         if dim is not None and dim != self.vector_size:
             raise ValueError(
