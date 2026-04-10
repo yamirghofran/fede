@@ -28,7 +28,7 @@ sys.path.insert(0, project_root)
 RESULTS_DIR = os.path.join(project_root, "evaluation", "results")
 
 
-# ── NDCG helpers ────────────────────────────────────────────────────────────
+# NDCG helpers
 
 def _dcg(grades: List[float], k: int) -> float:
     return sum(g / math.log2(i + 2) for i, g in enumerate(grades[:k]))
@@ -40,11 +40,11 @@ def ndcg_at_k(ranked_grades: List[float], k: int) -> float:
     return dcg / ideal if ideal > 0 else 0.0
 
 
-# ── Inter-rater agreement (Krippendorff's α, ordinal) ───────────────────────
+# Inter-rater agreement (Krippendorff's alpha, ordinal)
 
 def _krippendorff_alpha_ordinal(ratings_matrix: List[List[float]]) -> float:
     """
-    Simplified Krippendorff's α for ordinal data.
+    Simplified Krippendorff's alpha for ordinal data.
     ratings_matrix: list of [rater1_grade, rater2_grade, ...] per item.
     Only items with >= 2 raters are included.
     """
@@ -82,7 +82,7 @@ def _krippendorff_alpha_ordinal(ratings_matrix: List[List[float]]) -> float:
     return 1.0 - (Do / expected_disagreement)
 
 
-# ── Main logic ───────────────────────────────────────────────────────────────
+# Main logic
 
 def _load_annotations(path: str) -> List[dict]:
     rows = []
@@ -161,7 +161,7 @@ def _compute_ndcg_per_engine(
 
 
 def _compute_iaa(rows: list) -> Dict[str, float]:
-    """Compute Krippendorff's α per engine."""
+    """Compute Krippendorff's alpha per engine."""
     # Group: {engine: {(qid, movie_key): {person_id: grade}}}
     grouped: Dict[str, Dict[Tuple, Dict[str, float]]] = defaultdict(lambda: defaultdict(dict))
     for r in rows:
@@ -193,7 +193,7 @@ def main():
         sys.exit(1)
 
     print("=" * 60)
-    print("FEDE — NDCG COMPUTATION")
+    print("FEDE - NDCG COMPUTATION")
     print("=" * 60)
     print(f"Input : {args.input}")
     print(f"k     : {args.k}")

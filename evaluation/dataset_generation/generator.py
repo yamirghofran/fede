@@ -1,386 +1,367 @@
-"""
-Movie Query Generator using OpenAI with Checkpointing and Validation
-Following Mustafa et al. [4] methodology - IJECE Vol. 14, No. 6
-Uses FULL movie scripts as input (no truncation)
-"""
+from __future__ import annotations
 
+import argparse
 import json
 import logging
 import os
-import random
+import re
+import sys
 import time
-from pathlib import Path
 from typing import Dict, List, Optional
 
+from dotenv import load_dotenv
 from openai import OpenAI, APITimeoutError, RateLimitError, APIConnectionError
-from tqdm import tqdm
+
+load_dotenv()
+
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, project_root)
 
 from evaluation.dataset_generation.checkpoint_manager import CheckpointManager
 from evaluation.dataset_generation.config import (
-    BACKUP_AFTER_EACH_QUERY,
-    BASE_DIR,
     CHECKPOINT_INTERVAL,
     CHECKPOINT_PATH,
+    DEFAULT_MODEL,
+    EVAL_QUERIES_PATH,
+    EXTENDED_IDX_BASE,
+    GENERATION_PROMPT,
+    LLM_API_BASE,
     MAX_RETRIES,
     METADATA_PATH,
-    MODEL_NAME,
-    OUTPUT_PATH,
+    MIN_RELATIONS,
+    QUERIES_PER_MOVIE,
     RATE_LIMIT_DELAY,
-    RETRY_DELAY,
-    SCRIPTS_BASE_PATH,
-    SYSTEM_PROMPT,
+    RELATIONS_DIR,
+    VALIDATION_STRICTNESS,
 )
 from evaluation.dataset_generation.validator import QueryValidator
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-class OpenAIQueryGenerator:
-    """
-    Generates movie description queries using OpenAI.
-    Features: Checkpointing, Validation, Backup.
-    """
+# Dataset I/O
 
-    def __init__(
-        self,
-        api_key: str,
-        model: str = MODEL_NAME,
-        checkpoint_interval: int = CHECKPOINT_INTERVAL,
-        enable_validation: bool = True,
-    ):
-        """
-        Initialize OpenAI generator with all features.
+def load_dataset(path: str) -> List[Dict]:
+    """Load eval dataset; supports both flat-list and nested formats."""
+    if not os.path.exists(path):
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, list):
+        return data
+    return data.get("evaluation_queries", [])
 
-        Args:
-            api_key: OpenAI API key
-            model: Model to use (default: gpt-4o-mini)
-            checkpoint_interval: Save checkpoint every N queries
-            enable_validation: Enable lexical leakage detection
-        """
-        self.client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
-        self.model = model
-        self.metadata = self._load_metadata()
 
-        # Initialize validator
-        self.validator = QueryValidator(self.metadata) if enable_validation else None
+def save_dataset(queries: List[Dict], path: str) -> None:
+    """Save flat-list format (eval_queries.json style)."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(queries, f, indent=2, ensure_ascii=False)
 
-        # Initialize checkpoint manager
-        self.checkpoint_manager = CheckpointManager(
-            CHECKPOINT_PATH, checkpoint_interval
+
+# Relation helpers
+
+def _relations_file_for_movie(movie_title: str) -> Optional[str]:
+    """Find the relations file for a movie by matching title to filename."""
+    if not os.path.isdir(RELATIONS_DIR):
+        return None
+    title_norm = re.sub(r"[^a-z0-9]", "", movie_title.lower())
+    for fname in os.listdir(RELATIONS_DIR):
+        if not fname.endswith("_relations.json"):
+            continue
+        base = fname.replace("_relations.json", "")
+        base_norm = re.sub(r"[^a-z0-9]", "", base.lower())
+        if base_norm == title_norm:
+            return os.path.join(RELATIONS_DIR, fname)
+    return None
+
+
+def load_relations(movie_title: str) -> List[Dict]:
+    """Return the list of narrative relations for a movie, or [] if not found."""
+    path = _relations_file_for_movie(movie_title)
+    if not path:
+        return []
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
+        data = json.load(f)
+    return data.get("relations", [])
+
+
+def _format_relations(relations: List[Dict], max_relations: int = 20) -> str:
+    """Format relations as a readable text block for the LLM prompt."""
+    lines = []
+    for r in relations[:max_relations]:
+        label = r.get("label", "?")
+        from_ = r.get("from", "?")
+        to = r.get("to", "?")
+        evidence = r.get("evidence", "").strip().replace("\n", " ")[:80]
+        lines.append(f'  {from_} --{label}--> {to}   ("{evidence}")')
+    return "\n".join(lines)
+
+
+# Query coverage helpers
+
+def _movie_title_from_query(q: Dict) -> str:
+    return q.get("movie_title") or q.get("movie_name", "")
+
+
+def _already_covered(queries: List[Dict], movie_title: str) -> bool:
+    """Return True if dataset already contains extended queries for this movie."""
+    title_norm = movie_title.lower().strip()
+    return any(
+        _movie_title_from_query(q).lower().strip() == title_norm
+        and q.get("_scene_idx", 0) >= EXTENDED_IDX_BASE
+        for q in queries
+    )
+
+
+def _next_scene_idx(queries: List[Dict], movie_title: str) -> int:
+    """Return the next available _scene_idx for extended queries of a movie."""
+    title_norm = movie_title.lower().strip()
+    existing = [
+        q.get("_scene_idx", 0)
+        for q in queries
+        if _movie_title_from_query(q).lower().strip() == title_norm
+        and q.get("_scene_idx", 0) >= EXTENDED_IDX_BASE
+    ]
+    return max(existing, default=EXTENDED_IDX_BASE - 1) + 1
+
+
+def _movie_id_from_title(movie_title: str, metadata: Dict) -> str:
+    """Best-effort: find the metadata key for a movie title."""
+    title_norm = re.sub(r"[^a-z0-9]", "", movie_title.lower())
+    for key, entry in metadata.items():
+        name = entry.get("file", {}).get("name", "")
+        if re.sub(r"[^a-z0-9]", "", name.lower()) == title_norm:
+            return key
+    return re.sub(r"[^a-z0-9_]", "_", movie_title.lower()).strip("_")
+
+
+# Query generation
+
+class QueryGenerator:
+    def __init__(self, model: str = DEFAULT_MODEL):
+        api_key = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise EnvironmentError("Set LLM_API_KEY or OPENAI_API_KEY in .env")
+        self._client = OpenAI(api_key=api_key, base_url=LLM_API_BASE)
+        self._model = model
+
+    def generate(self, movie_title: str, relations: List[Dict], n: int = QUERIES_PER_MOVIE) -> List[str]:
+        """Generate n queries for a movie using its narrative relations."""
+        relations_text = _format_relations(relations)
+        prompt = GENERATION_PROMPT.format(
+            movie_title=movie_title,
+            relations_text=relations_text,
+            n=n,
         )
-
-    def _load_metadata(self) -> Dict:
-        """Load movie metadata from clean_parsed_meta.json"""
-        metadata_path = Path(METADATA_PATH)
-        if not metadata_path.exists():
-            # Try alternative path
-            alt_path = (
-                Path(__file__).parent.parent
-                / "data/scripts/metadata/clean_parsed_meta.json"
-            )
-            if alt_path.exists():
-                metadata_path = alt_path
-
-        with open(metadata_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-
-    def _read_script(self, script_path: str) -> str:
-        """Read full movie script with encoding fallback."""
-        try:
-            with open(script_path, "r", encoding="utf-8") as f:
-                return f.read()
-        except UnicodeDecodeError:
-            with open(script_path, "r", encoding="latin-1") as f:
-                return f.read()
-
-    def _build_prompt(self, script_content: str) -> str:
-        """Build prompt using FULL script content."""
-        return f"""Movie script: {script_content}
-
-{SYSTEM_PROMPT}"""
-
-    def _generate_with_retry(
-        self, prompt: str, max_retries: int = MAX_RETRIES
-    ) -> Optional[str]:
-        """Generate query with automatic retry on failure."""
-        for attempt in range(max_retries):
+        for attempt in range(1, MAX_RETRIES + 1):
             try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
+                resp = self._client.chat.completions.create(
+                    model=self._model,
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=0.8,
-                    max_tokens=1000,
-                    top_p=0.8,
+                    temperature=0.7,
+                    timeout=60,
                 )
+                raw = resp.choices[0].message.content.strip()
+                queries = [line.strip() for line in raw.splitlines() if line.strip()]
+                return queries[:n]
+            except RateLimitError:
+                wait = 30 * attempt
+                print(f"  Rate limit - waiting {wait}s")
+                time.sleep(wait)
+            except (APITimeoutError, APIConnectionError) as e:
+                if attempt == MAX_RETRIES:
+                    logger.warning("LLM call failed after %d retries: %s", MAX_RETRIES, e)
+                    return []
+                time.sleep(5 * attempt)
+        return []
 
-                if response.choices and len(response.choices) > 0:
-                    choice = response.choices[0]
-                    if choice.finish_reason == "content_filter":
-                        logger.warning(
-                            f"Response blocked by content filter (attempt {attempt + 1}/{max_retries})"
-                        )
-                        time.sleep(2**attempt)
-                        continue
 
-                    if choice.message and choice.message.content:
-                        query = choice.message.content.strip()
-                        return query
-                    else:
-                        logger.warning(
-                            f"Empty response (attempt {attempt + 1}/{max_retries})"
-                        )
-                        if attempt < max_retries - 1:
-                            time.sleep(2**attempt)
-                        continue
+# Main pipeline
 
-            except (RateLimitError, APITimeoutError, APIConnectionError) as e:
-                logger.error(
-                    f"Error during generation (attempt {attempt + 1}/{max_retries}): {e}"
-                )
-                error_str = str(e)
-                if (
-                    "rate_limit" in error_str.lower()
-                    or "limit" in error_str.lower()
-                    or "429" in error_str
-                ):
-                    logger.warning("Rate limit hit, waiting 30 seconds...")
-                    time.sleep(30)
-                elif attempt < max_retries - 1:
-                    time.sleep(2**attempt)
-                continue
+def run(
+    target_movies: Optional[List[str]] = None,
+    queries_per_movie: int = QUERIES_PER_MOVIE,
+    validate_only: bool = False,
+    resume: bool = False,
+    output_path: str = EVAL_QUERIES_PATH,
+) -> None:
+    with open(METADATA_PATH, "r", encoding="utf-8") as f:
+        metadata = json.load(f)
 
-        logger.error("All retry attempts failed")
-        return None
+    queries = load_dataset(output_path)
+    print(f"Loaded {len(queries)} existing queries from {output_path}")
 
-    def generate_query(self, movie_key: str, query_id: int) -> Optional[Dict]:
-        """
-        Generate a single query for a movie using FULL script.
-        Includes validation.
-        """
-        movie_entry = self.metadata[movie_key]
-        file_info = movie_entry.get("file", {})
-        tmdb_info = movie_entry.get("tmdb", {})
+    if validate_only:
+        _run_validation(queries, metadata)
+        return
 
-        # Build script path
-        file_name = file_info.get("file_name")
-        source = file_info.get("source")
-        script_path = os.path.join(SCRIPTS_BASE_PATH, source, f"{file_name}.txt")
+    all_movies = _discover_movies()
+    print(f"Movies with relation data: {len(all_movies)}")
 
-        # Check if script exists
-        if not os.path.exists(script_path):
-            logger.error(f"Script not found: {script_path}")
-            return None
+    if target_movies:
+        requested_norm = {re.sub(r"[^a-z0-9]", "", m.lower()) for m in target_movies}
+        candidates = {
+            title: path for title, path in all_movies.items()
+            if re.sub(r"[^a-z0-9]", "", title.lower()) in requested_norm
+        }
+        not_found = requested_norm - {re.sub(r"[^a-z0-9]", "", t.lower()) for t in candidates}
+        if not_found:
+            print(f"WARNING: no relation data found for: {not_found}")
+    else:
+        candidates = all_movies
 
-        # Read FULL script
-        script_content = self._read_script(script_path)
+    candidates = {
+        title: path for title, path in candidates.items()
+        if _count_relations(path) >= MIN_RELATIONS
+    }
 
-        # Build prompt
-        prompt = self._build_prompt(script_content)
-
-        # Generate with retry
-        query = self._generate_with_retry(prompt)
-
-        if query:
-            result = {
-                "id": query_id,
-                "query": query,
-                "movie_name": file_info.get("name"),
-                "movie_key": movie_key,
-                "metadata": {
-                    "release_date": tmdb_info.get("release_date"),
-                    "tmdb_id": tmdb_info.get("id"),
-                    "overview": tmdb_info.get("overview"),
-                    "source": source,
-                    "file_name": file_name,
-                    # Store relative path for portability across machines
-                    "script_path": os.path.relpath(script_path, BASE_DIR),
-                    "script_size_bytes": len(script_content),
-                    "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    "model": self.model,
-                },
-            }
-
-            # Validate query
-            if self.validator:
-                validation_result = self.validator.check_lexical_leakage(
-                    query, file_info.get("name")
-                )
-                result["validation"] = validation_result
-
-            return result
-
-        return None
-
-    def generate_batch(
-        self, num_queries: int = 300, resume: bool = False
-    ) -> List[Dict]:
-        """
-        Generate queries for multiple randomly sampled movies.
-        Supports checkpoint/resume.
-
-        Args:
-            num_queries: Number of queries to generate
-            resume: Whether to resume from checkpoint
-
-        Returns:
-            List of generated query dictionaries
-        """
-        # Check for existing checkpoint
-        if resume:
-            checkpoint_data = self.checkpoint_manager.load_checkpoint()
-            if checkpoint_data:
-                results = checkpoint_data["queries"]
-                completed = checkpoint_data["progress"]["completed"]
-
-                if completed >= num_queries:
-                    logger.info("Already completed all queries!")
-                    return results
-
-                logger.info(f"Resuming from query {completed + 1}")
-
-                # Get remaining movies to process
-                all_keys = list(self.metadata.keys())
-                processed_keys = {r["movie_key"] for r in results}
-                remaining_keys = [k for k in all_keys if k not in processed_keys]
-
-                # Sample remaining
-                needed = num_queries - completed
-                sampled_keys = random.sample(
-                    remaining_keys, min(needed, len(remaining_keys))
-                )
-                start_id = completed
-            else:
-                # No checkpoint, start fresh
-                movie_keys = list(self.metadata.keys())
-                sampled_keys = random.sample(
-                    movie_keys, min(num_queries, len(movie_keys))
-                )
-                results = []
-                start_id = 0
-        else:
-            # Fresh start
-            movie_keys = list(self.metadata.keys())
-            sampled_keys = random.sample(movie_keys, min(num_queries, len(movie_keys)))
-            results = []
-            start_id = 0
-
-        logger.info(f"Generating {len(sampled_keys)} queries using {self.model}")
-        logger.info(f"Method: Full scripts (no truncation)")
-        logger.info(f"Features: Checkpointing, Validation, Backup")
-
-        failed_count = 0
-
-        for i, movie_key in enumerate(tqdm(sampled_keys, desc="Generating queries")):
-            query_id = start_id + i + 1
-            result = self.generate_query(movie_key, query_id)
-
-            if result:
-                results.append(result)
-            else:
-                failed_count += 1
-                logger.warning(f"Failed to generate query for: {movie_key}")
-
-            # Partial backup: save after each query
-            if BACKUP_AFTER_EACH_QUERY:
-                self._save_partial_backup(results, query_id, num_queries)
-
-            # Checkpoint save
-            completed = start_id + i + 1
-            if self.checkpoint_manager.should_checkpoint(completed):
-                self.checkpoint_manager.save_checkpoint(results, completed, num_queries)
-
-            # Rate limiting
-            if i < len(sampled_keys) - 1:
-                time.sleep(RATE_LIMIT_DELAY)
-
-        logger.info(
-            f"Successfully generated {len(results)} queries, failed: {failed_count}"
-        )
-
-        return results
-
-    def _save_partial_backup(self, queries: List[Dict], completed: int, total: int):
-        """Save partial backup."""
-        backup_path = OUTPUT_PATH.replace(".json", "_backup.json")
-
-        # Ensure output directory exists before saving
-        backup_dir = os.path.dirname(backup_path)
-        os.makedirs(backup_dir, exist_ok=True)
-
-        backup_data = {
-            "evaluation_queries": queries,
-            "dataset_info": {
-                "total_queries": completed,
-                "methodology": "Mustafa et al. [4] - IJECE Vol. 14, No. 6",
-                "prompt": SYSTEM_PROMPT,
-                "input_type": "full_scripts",
-                "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "version": "1.0",
-                "model": self.model,
-                "status": "partial_backup",
-            },
+    if not target_movies:
+        candidates = {
+            title: path for title, path in candidates.items()
+            if not _already_covered(queries, title)
         }
 
-        try:
-            # Atomic write
-            temp_path = f"{backup_path}.tmp"
-            with open(temp_path, "w", encoding="utf-8") as f:
-                json.dump(backup_data, f, indent=2, ensure_ascii=False)
-            os.rename(temp_path, backup_path)
-        except Exception as e:
-            logger.warning(f"Failed to save partial backup: {e}")
+    print(f"Movies to process: {len(candidates)}")
+    if not candidates:
+        print("Nothing to do - all candidate movies already have extended queries.")
+        _run_validation(queries, metadata)
+        return
 
-    def save_queries(self, queries: List[Dict], output_path: str):
-        """
-        Save generated queries to JSON file with validation report.
-        """
-        # Generate validation report
-        if self.validator:
-            validation_report = self.validator.validate_batch(queries)
-        else:
-            validation_report = None
+    checkpoint_mgr = CheckpointManager(CHECKPOINT_PATH, CHECKPOINT_INTERVAL)
+    new_queries: List[Dict] = []
 
-        output_data = {
-            "evaluation_queries": queries,
-            "validation_report": validation_report,
-        }
+    if resume and checkpoint_mgr.has_checkpoint():
+        cp = checkpoint_mgr.load_checkpoint()
+        if cp:
+            new_queries = cp.get("queries", [])
+            done_titles = {q.get("movie_title", "") for q in new_queries}
+            candidates = {t: p for t, p in candidates.items() if t not in done_titles}
+            print(f"Resuming - {len(new_queries)} queries loaded from checkpoint")
 
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    generator = QueryGenerator()
+    validator = QueryValidator(metadata, strictness=VALIDATION_STRICTNESS)
 
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(output_data, f, indent=2, ensure_ascii=False)
+    total = len(candidates)
+    for i, (movie_title, _) in enumerate(candidates.items(), 1):
+        relations = load_relations(movie_title)
+        print(f"[{i}/{total}] {movie_title} ({len(relations)} relations)")
 
-        logger.info(f"Saved {len(queries)} queries to {output_path}")
+        raw_texts = generator.generate(movie_title, relations, n=queries_per_movie)
+        if not raw_texts:
+            print(f"  [!] LLM returned nothing")
+            time.sleep(RATE_LIMIT_DELAY)
+            continue
 
-        # Print validation summary
-        if validation_report:
-            print("\n" + "=" * 70)
-            print("VALIDATION SUMMARY")
-            print("=" * 70)
-            print(f"Total queries: {validation_report['total']}")
-            print(f"Passed validation: {validation_report['passed']}")
-            print(f"Flagged for leakage: {validation_report['flagged']}")
-            print(
-                f"Average leakage score: {validation_report['avg_leakage_score']:.3f}"
-            )
-            print()
+        movie_id = _movie_id_from_title(movie_title, metadata)
+        start_idx = _next_scene_idx(queries + new_queries, movie_title)
 
-            if validation_report["flagged_queries"]:
-                print("FLAGGED QUERIES (may need manual review):")
-                print("-" * 70)
-                for flagged in validation_report["flagged_queries"][
-                    :10
-                ]:  # Show first 10
-                    print(f"ID {flagged['id']}: {flagged['movie_name']}")
-                    print(f"  Query: {flagged['query']}")
-                    print(f"  Reason: {flagged['reason']}")
-                    print(f"  Score: {flagged['leakage_score']:.2f}")
-                    print()
+        for j, text in enumerate(raw_texts):
+            result = validator.check_lexical_leakage(text, movie_title)
+            status = "[flagged]" if result["has_leakage"] else "[ok]"
+            print(f"  {status}  {text[:80]}")
+            new_queries.append({
+                "query": text,
+                "movie_id": movie_id,
+                "movie_title": movie_title,
+                "_scene_idx": start_idx + j,
+                "validation": result,
+            })
 
-                if len(validation_report["flagged_queries"]) > 10:
-                    print(
-                        f"... and {len(validation_report['flagged_queries']) - 10} more"
-                    )
+        time.sleep(RATE_LIMIT_DELAY)
 
-            print("=" * 70)
+        if checkpoint_mgr.should_checkpoint(i):
+            checkpoint_mgr.save_checkpoint(new_queries, i, total)
+
+    if new_queries:
+        queries.extend(new_queries)
+        save_dataset(queries, output_path)
+        print(f"\nAdded {len(new_queries)} queries -> {len(queries)} total")
+        checkpoint_mgr.clear_checkpoint()
+    else:
+        print("\nNo new queries generated.")
+
+    _run_validation(queries, metadata)
+
+
+def _discover_movies() -> Dict[str, str]:
+    """Return {movie_title: relations_file_path} for all available relation files."""
+    result = {}
+    if not os.path.isdir(RELATIONS_DIR):
+        return result
+    for fname in sorted(os.listdir(RELATIONS_DIR)):
+        if not fname.endswith("_relations.json"):
+            continue
+        title = fname.replace("_relations.json", "").replace("-", " ")
+        result[title] = os.path.join(RELATIONS_DIR, fname)
+    return result
+
+
+def _count_relations(path: str) -> int:
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            return len(json.load(f).get("relations", []))
+    except Exception:
+        return 0
+
+
+def _run_validation(queries: List[Dict], metadata: Dict) -> None:
+    validator = QueryValidator(metadata, strictness=VALIDATION_STRICTNESS)
+    report = validator.validate_batch(queries)
+    print(f"\nValidation report:")
+    print(f"  Total  : {report['total']}")
+    print(f"  Passed : {report['passed']}")
+    print(f"  Flagged: {report['flagged']}  (leakage score >= threshold)")
+    if report["flagged_queries"]:
+        print("  Flagged queries (first 5):")
+        for q in report["flagged_queries"][:5]:
+            print(f"    [{q.get('id', '?')}] {q['query'][:70]}  score={q['leakage_score']:.2f}")
+
+
+# CLI
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Generate queries and append to eval_queries.json"
+    )
+    parser.add_argument(
+        "--movies",
+        nargs="+",
+        metavar="TITLE",
+        help="Movie titles to generate for (default: all with sufficient relation data)",
+    )
+    parser.add_argument(
+        "--queries-per-movie",
+        type=int,
+        default=QUERIES_PER_MOVIE,
+        help=f"Queries to generate per movie (default: {QUERIES_PER_MOVIE})",
+    )
+    parser.add_argument(
+        "--validate-only",
+        action="store_true",
+        help="Skip generation and only run validation on existing queries",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from last checkpoint",
+    )
+    parser.add_argument(
+        "--output",
+        default=EVAL_QUERIES_PATH,
+        help=f"Path to eval_queries.json (default: {EVAL_QUERIES_PATH})",
+    )
+    args = parser.parse_args()
+
+    run(
+        target_movies=args.movies,
+        queries_per_movie=args.queries_per_movie,
+        validate_only=args.validate_only,
+        resume=args.resume,
+        output_path=args.output,
+    )
+
+
+if __name__ == "__main__":
+    main()

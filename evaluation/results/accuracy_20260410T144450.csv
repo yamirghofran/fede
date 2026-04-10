@@ -1,0 +1,4 @@
+method,n_runs,total_queries,accuracy@5,accuracy@10,accuracy@15,accuracy@20
+bm25,1,113,0.3894,0.469,0.5398,0.5487
+semantic,1,113,0.7522,0.7965,0.8053,0.823
+hybrid,1,113,0.761,0.778,0.822,0.840

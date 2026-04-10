@@ -90,7 +90,7 @@ def _build_assignment_matrix(queries: list, methods: list, n_people: int, querie
         print(f"WARNING: Need {unique_per_method} unique queries per method but only {n_queries} available.")
         unique_per_method = n_queries
 
-    # Create pool of (query_id, method) pairs — each repeated twice for 2 raters
+    # Create pool of (query_id, method) pairs - each repeated twice for 2 raters
     pool = []
     for method in methods:
         selected_queries = queries[:unique_per_method]
@@ -213,7 +213,7 @@ def main():
     unique_queries_needed = max(unique_queries_needed, 1)
 
     print("=" * 60)
-    print("FEDE — NDCG BATCH GENERATION")
+    print("FEDE - NDCG BATCH GENERATION")
     print("=" * 60)
     print(f"Methods          : {', '.join(args.methods)}")
     print(f"People           : {args.people}")
