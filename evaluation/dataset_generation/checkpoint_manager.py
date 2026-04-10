@@ -1,8 +1,3 @@
-"""
-Checkpoint Manager for resumable query generation
-Handles saving, loading, and resuming from checkpoints
-"""
-
 import json
 import os
 import time

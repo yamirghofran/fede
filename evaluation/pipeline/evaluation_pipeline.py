@@ -1,13 +1,18 @@
 import json
+import logging
 import os
+import re
 from typing import Dict, List, Optional
 
 from tqdm import tqdm
 
+from evaluation.baselines.movie_key import normalize_movie_key
 from evaluation.metrics.metrics import evaluate_batch
 
+logger = logging.getLogger(__name__)
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULT_DATASET_PATH = os.path.join(BASE_DIR, "evaluation", "evaluation_dataset", "generated_queries.json")
+DEFAULT_DATASET_PATH = os.path.join(BASE_DIR, "evaluation", "evaluation_dataset", "eval_queries.json")
 
 
 def _load_dataset(path: str, clean_only: bool = False) -> List[Dict]:
@@ -15,12 +20,37 @@ def _load_dataset(path: str, clean_only: bool = False) -> List[Dict]:
         raise FileNotFoundError(f"Eval dataset not found at {path}")
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    queries = data.get("evaluation_queries", [])
+    if isinstance(data, list):
+        queries = _normalize_flat_queries(data)
+    else:
+        queries = data.get("evaluation_queries", [])
+        if clean_only:
+            queries = [q for q in queries if not q.get("validation", {}).get("has_leakage", False)]
     if not queries:
         raise ValueError(f"No queries found in {path}")
-    if clean_only:
-        queries = [q for q in queries if not q.get("validation", {}).get("has_leakage", False)]
     return queries
+
+
+def _normalize_flat_queries(data: List[Dict]) -> List[Dict]:
+    """Convert eval_queries.json flat-list format to internal {id, query, movie_key, movie_name}."""
+    normalized = []
+    for i, row in enumerate(data):
+        query_text = row.get("query", "")
+        if query_text.strip().startswith("{"):
+            continue  # skip malformed rows
+        if row.get("validation", {}).get("has_leakage", False):
+            continue
+        movie_key = normalize_movie_key(row.get("movie_id", ""))
+        if movie_key is None:
+            logger.warning("unknown movie_id %r (row %d) - skipping", row.get("movie_id"), i)
+            continue
+        normalized.append({
+            "id": i,
+            "query": query_text,
+            "movie_key": movie_key,
+            "movie_name": row.get("movie_title", ""),
+        })
+    return normalized
 
 
 def _rrf_merge(all_run_results: List[List[Dict]], k: int = 60) -> List[Dict]:
@@ -67,7 +97,7 @@ def run_pipeline(
         if n_runs == 1:
             results = retriever.retrieve(q["query"], top_k=top_k)
         else:
-            # Multiple runs — aggregate with RRF
+            # Multiple runs - aggregate with RRF
             run_lists = [retriever.retrieve(q["query"], top_k=top_k) for _ in range(n_runs)]
             results = _rrf_merge(run_lists)
 

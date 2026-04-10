@@ -26,7 +26,7 @@ from evaluation.pipeline.evaluation_pipeline import run_pipeline
 IS_DETERMINISTIC = {
     "bm25": True,
     "semantic": True,
-    "hybrid": True,  # LLM uses temperature=0 → deterministic
+    "hybrid": False,  # LLM query rewriting uses temperature=0.3 -> non-deterministic
 }
 
 DEFAULT_N_RUNS_NONDETERMINISTIC = 5
@@ -56,7 +56,7 @@ def _resolve_n_runs(method: str, cli_n_runs: int | None) -> int:
 def _print_result(method: str, n_runs: int, metrics: dict, k_values: list):
     summary = metrics["summary"]
     total = metrics["total_queries"]
-    print(f"\n  {'─'*50}")
+    print(f"\n  {'-'*50}")
     print(f"  Method : {method}  (n_runs={n_runs})")
     print(f"  Queries: {total}")
     for k in k_values:
@@ -117,19 +117,29 @@ def main():
     parser.add_argument(
         "--clean-only",
         action="store_true",
-        help="Exclude queries flagged for lexical leakage (287 queries instead of 298)",
+        help="Exclude queries flagged for lexical leakage",
+    )
+    parser.add_argument(
+        "--queries-path",
+        type=str,
+        default=None,
+        help="Path to queries JSON. Default: evaluation/evaluation_dataset/eval_queries.json",
     )
     args = parser.parse_args()
+
+    from evaluation.pipeline.evaluation_pipeline import DEFAULT_DATASET_PATH
+    queries_path = args.queries_path or DEFAULT_DATASET_PATH
 
     ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     output_path = args.output or os.path.join(RESULTS_DIR, f"accuracy_{ts}.csv")
 
     print("=" * 60)
-    print("FEDE — ACCURACY@k EVALUATION")
+    print("FEDE - ACCURACY@k EVALUATION")
     print("=" * 60)
     print(f"Methods   : {', '.join(args.methods)}")
     print(f"k values  : {args.k_values}")
-    print(f"Clean only: {args.clean_only} {'(287 queries)' if args.clean_only else '(298 queries, includes 11 leaky)'}")
+    print(f"Dataset   : {queries_path}")
+    print(f"Clean only: {args.clean_only}")
     print(f"Output    : {output_path}")
 
     csv_rows = []
@@ -141,7 +151,7 @@ def main():
         retriever = _build_retriever(method, args.api_url)
 
         print(f"[{method.upper()}] Running pipeline...")
-        metrics = run_pipeline(retriever, k_values=args.k_values, n_runs=n_runs, clean_only=args.clean_only)
+        metrics = run_pipeline(retriever, dataset_path=queries_path, k_values=args.k_values, n_runs=n_runs, clean_only=args.clean_only)
 
         _print_result(method, n_runs, metrics, args.k_values)
 
