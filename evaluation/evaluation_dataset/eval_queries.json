@@ -1,0 +1,1262 @@
+[
+  {
+    "query": "A young woman tells her boyfriend she's pregnant, and while he's initially overjoyed, he becomes furious when she mentions considering other options besides keeping the baby.",
+    "movie_id": "trap_livin'",
+    "movie_title": "Trap Livin'",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A teenage girl reveals to her best friend that she is pregnant and seeks support in telling the baby's father.",
+    "movie_id": "trap_livin'",
+    "movie_title": "Trap Livin'",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"During the first day of high school, two boys try to flirt with two girls, but one girl immediately rejects her suitor after",
+    "movie_id": "trap_livin'",
+    "movie_title": "Trap Livin'",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A group's ritual to transfer a demonic spirit into a goat goes disastrously wrong, leading to violent possessions, chaotic attacks,",
+    "movie_id": "drag_me_to_hell",
+    "movie_title": "Drag Me to Hell",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\n  \"query\": \"A bank employee denies an elderly woman a loan extension to save her home, leading to a public confrontation where the",
+    "movie_id": "drag_me_to_hell",
+    "movie_title": "Drag Me to Hell",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\n  \"query\": \"An old woman ambushes a younger woman in her car and places a supernatural curse on her using a button.\",",
+    "movie_id": "drag_me_to_hell",
+    "movie_title": "Drag Me to Hell",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A man learns a native woman's name as she acts out the meaning of each word.",
+    "movie_id": "dances_with_wolves",
+    "movie_title": "Dances with Wolves",
+    "_scene_idx": 0
+  },
+  {
+    "query": "During a military standoff, an officer unexpectedly charges alone on horseback directly into the enemy lines.",
+    "movie_id": "dances_with_wolves",
+    "movie_title": "Dances with Wolves",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A military officer is discovered by other soldiers, injured and out of uniform, and his claim of identity is met with suspicion when his journal and orders are reported missing.",
+    "movie_id": "dances_with_wolves",
+    "movie_title": "Dances with Wolves",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A defiant father forces his uncomfortable son to play a loud song on a bar's jukebox, provoking patrons who then douse the father with beer while he laughs",
+    "movie_id": "catch_me_if_you_can",
+    "movie_title": "Catch Me If You Can",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A movie about a notorious teenage con artist who impersonated multiple professionals and committed millions in fraud before his eighteenth birthday.",
+    "movie_id": "catch_me_if_you_can",
+    "movie_title": "Catch Me If You Can",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A son offers his father a new car and financial assistance for his birthday, but the father, who closed his business due to government pressure, declines the gifts and is celebrating with another woman.",
+    "movie_id": "catch_me_if_you_can",
+    "movie_title": "Catch Me If You Can",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A young fighter approaches an aging boxing legend, revealing he is the grandson of the legend's famous rival and friend, and asks to be trained.",
+    "movie_id": "creed",
+    "movie_title": "Creed",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A cocky fighter puts up cash to challenge others in a gym, but loses badly to a seasoned boxer who knocks out his tooth.",
+    "movie_id": "creed",
+    "movie_title": "Creed",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A retired boxing legend trains a young fighter who tries to keep their close family connection a secret from the gym owner and other boxers.",
+    "movie_id": "creed",
+    "movie_title": "Creed",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A movie where an FBI agent secretly works to protect a violent vigilante group from prosecution by manipulating the ongoing investigation.\", \"skip\": false",
+    "movie_id": "boondock_saints_2:_all_saints_day",
+    "movie_title": "Boondock Saints 2: All Saints Day",
+    "_scene_idx": 0
+  },
+  {
+    "query": "Sons watch as an older man uses Russian roulette to interrogate a captured gunman about a missing person, telling his son to let him handle it.",
+    "movie_id": "boondock_saints_2:_all_saints_day",
+    "movie_title": "Boondock Saints 2: All Saints Day",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A group of local detectives, initially resolved to stand firm, is completely outmaneuvered by a highly intelligent and assertive female federal agent who swiftly takes control of their investigation.",
+    "movie_id": "boondock_saints_2:_all_saints_day",
+    "movie_title": "Boondock Saints 2: All Saints Day",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A man learns that two hyper-intelligent mice intend to extract the ultimate question from his brain.",
+    "movie_id": "hitchhiker's_guide_to_the_galaxy,_the",
+    "movie_title": "Hitchhiker's Guide to the Galaxy, The",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A president with two heads and an extra arm reunites with an old friend and a past lover while trying to escape a pursuing alien",
+    "movie_id": "hitchhiker's_guide_to_the_galaxy,_the",
+    "movie_title": "Hitchhiker's Guide to the Galaxy, The",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A man has a small alien fish inserted into his ear to translate an alien captain's speech just before he and",
+    "movie_id": "hitchhiker's_guide_to_the_galaxy,_the",
+    "movie_title": "Hitchhiker's Guide to the Galaxy, The",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\n  \"query\": \"A shark attacks a rescue helicopter attempting to save people from a damaged raft, causing the chopper to crash and forcing",
+    "movie_id": "jaws_2",
+    "movie_title": "Jaws 2",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A group of kids on small sailboats is attacked by a shark, leading to multiple capsized boats and an injured child.",
+    "movie_id": "jaws_2",
+    "movie_title": "Jaws 2",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A local official suspects a deadly shark killed a whale found on the beach, despite a scientist's initial skepticism.",
+    "movie_id": "jaws_2",
+    "movie_title": "Jaws 2",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"Two antagonistic characters engage in a witty and insulting verbal duel in a cafe, revealing their deep-seated disagreements while one is expecting a",
+    "movie_id": "you've_got_mail",
+    "movie_title": "You've got Mail",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A man introduces his young aunt and brother to a bookstore owner, revealing an unusual family dynamic where age does not match traditional roles.",
+    "movie_id": "you've_got_mail",
+    "movie_title": "You've got Mail",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\n  \"query\": \"An independent bookstore owner realizes the man she's arguing with is the head of the rival superstore, accusing him of",
+    "movie_id": "you've_got_mail",
+    "movie_title": "You've got Mail",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A person who has been out of touch for a long time reveals to a friend that they were in jail and then asks for money to help someone.",
+    "movie_id": "you_can_count_on_me",
+    "movie_title": "You Can Count On Me",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A man takes a boy to meet an older man who denies being the boy's father, leading to a fight and an arrest.",
+    "movie_id": "you_can_count_on_me",
+    "movie_title": "You Can Count On Me",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A skeptical individual is challenged to consider if their life holds importance beyond personal attachment and ultimately admits a desire for deeper meaning.",
+    "movie_id": "you_can_count_on_me",
+    "movie_title": "You Can Count On Me",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A man becomes furious with his partner for mishandling his meticulously organized record collection, explaining his deep emotional connection to each album and",
+    "movie_id": "diner",
+    "movie_title": "Diner",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A mother threatens her adult son with a butcher knife when he demands a sandwich, while his brother calmly watches their routine argument.",
+    "movie_id": "diner",
+    "movie_title": "Diner",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A man threatens a woman with a knife while looking for her lover, but their intense confrontation unexpectedly turns into a passionate sexual encounter.\", ",
+    "movie_id": "blood_and_wine",
+    "movie_title": "Blood and Wine",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A woman playfully blindfolds a man with her underwear and offers her breast during a sensual wine tasting challenge.",
+    "movie_id": "blood_and_wine",
+    "movie_title": "Blood and Wine",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\n  \"query\": \"A man attempts to convince a cynical, older acquaintance to join him in stealing a very valuable necklace by using an",
+    "movie_id": "blood_and_wine",
+    "movie_title": "Blood and Wine",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A young man tries to rescue his mesmerized girlfriend from an older man at a crowded club who then reveals his monstrous nature by brutally killing bouncers and abducting her.\", ",
+    "movie_id": "fright_night_(1985)",
+    "movie_title": "Fright Night (1985)",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\n  \"query\": \"Two people searching a basement battle a master vampire and a transformed woman, destroying the master with sunlight through a ripped",
+    "movie_id": "fright_night_(1985)",
+    "movie_title": "Fright Night (1985)",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A teenager becomes distracted from his girlfriend when he sees two shadowy figures carrying a coffin into the house next door.",
+    "movie_id": "fright_night_(1985)",
+    "movie_title": "Fright Night (1985)",
+    "_scene_idx": 2
+  },
+  {
+    "query": "At an engagement party, a man protects the bride from her family's cruel and insulting toasts by giving a scathing toast that turns their own meanness against them.",
+    "movie_id": "runaway_bride",
+    "movie_title": "Runaway Bride",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A woman known for her multiple failed weddings encounters a reporter whose picture she had previously defaced and insists on washing his hair as a condition for an interview.",
+    "movie_id": "runaway_bride",
+    "movie_title": "Runaway Bride",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"During a softball game, an ex-girlfriend's overly enthusiastic support for her former boyfriend, now married to",
+    "movie_id": "runaway_bride",
+    "movie_title": "Runaway Bride",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A captive diner challenges a deranged chef by critiquing his elaborate food and demanding a cheeseburger, which ultimately leads to her",
+    "movie_id": "menu,_the",
+    "movie_title": "Menu, The",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A chef silences his guests in a high-end restaurant and gives a philosophical speech about not truly eating, then gives",
+    "movie_id": "menu,_the",
+    "movie_title": "Menu, The",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\n  \"query\": \"A woman arguing with her partner about his lack of support and her personal sacrifices eventually kicks him out of",
+    "movie_id": "knocked_up",
+    "movie_title": "Knocked Up",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A woman reveals to her casual date that she is pregnant with his child, sparking an argument about why they did not use a condom.",
+    "movie_id": "knocked_up",
+    "movie_title": "Knocked Up",
+    "_scene_idx": 1
+  },
+  {
+    "query": "After a one-night stand, a professional woman is disgusted to learn that the man she slept with creates an internet database of actresses' nude scenes.",
+    "movie_id": "knocked_up",
+    "movie_title": "Knocked Up",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\n  \"query\": \"A child protagonist intervenes to protect reanimated historical figures from a hostile town mob, explaining that the living are repeating",
+    "movie_id": "paranorman",
+    "movie_title": "ParaNorman",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A boy attempts to stop a curse by reading a book in a graveyard, but when a bully snatches the book, the dead begin to rise from their graves.",
+    "movie_id": "paranorman",
+    "movie_title": "ParaNorman",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A boy attempts to talk down a powerful, centuries-old ghost child whose rage is manifested as a destructive storm.\", ",
+    "movie_id": "paranorman",
+    "movie_title": "ParaNorman",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A party guest attempts to trick a security guard to gain entry into a restricted part of a wealthy home.",
+    "movie_id": "antitrust",
+    "movie_title": "Antitrust",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A boss confronts his employee for sending a personal email, then expresses profound personal appreciation for him, followed by a philosophical justification for the destruction that comes with creating something great.",
+    "movie_id": "antitrust",
+    "movie_title": "Antitrust",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\n  \"query\": \"A woman finally trusts a man after he reveals a sinister organization's plan to frame",
+    "movie_id": "antitrust",
+    "movie_title": "Antitrust",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\n  \"query\": \"A powerful man gives a young boy his first cigarette and tells him a brutal fable about a fox to teach him to stand",
+    "movie_id": "hancock",
+    "movie_title": "Hancock",
+    "_scene_idx": 0
+  },
+  {
+    "query": "After a brutal fight between two men causes a building to collapse and kill a woman, one combatant tries to commit suicide while the other frantically digs through the rubble for her.",
+    "movie_id": "hancock",
+    "movie_title": "Hancock",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\n  \"query\": \"A husband, returning home disheveled, confesses his long-held insecurity to his wife, revealing he always felt she",
+    "movie_id": "hancock",
+    "movie_title": "Hancock",
+    "_scene_idx": 2
+  },
+  {
+    "query": "After being shot, a woman is taken underwater by an aquatic creature and develops gills to live with him.",
+    "movie_id": "shape_of_water,_the",
+    "movie_title": "Shape of Water, The",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A unique amphibious creature is subjected to extreme conditions in a lab to test its survivability for space travel, as military and scientific personnel argue",
+    "movie_id": "shape_of_water,_the",
+    "movie_title": "Shape of Water, The",
+    "_scene_idx": 1
+  },
+  {
+    "query": "An injured government agent interrogates two cleaning women, one of whom is mute, about a creature he brought from South America that he considers an affront to God.",
+    "movie_id": "shape_of_water,_the",
+    "movie_title": "Shape of Water, The",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A wife, angry about her husband's infidelity and a related death, leverages an alibi to force him to sign a legally binding separation agreement that redistributes his wealth.",
+    "movie_id": "arbitrage",
+    "movie_title": "Arbitrage",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A man reveals to his female colleague that he committed massive financial fraud with a Russian copper mine that failed, putting them both in legal trouble",
+    "movie_id": "arbitrage",
+    "movie_title": "Arbitrage",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A detective questions a man about his relationship with a deceased gallery owner, discovering he leased her apartment and has a suspicious head injury.",
+    "movie_id": "arbitrage",
+    "movie_title": "Arbitrage",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A child uses a v-chip to channel profanity as a superpower to defeat a tyrannical villain who has taken",
+    "movie_id": "south_park",
+    "movie_title": "South Park",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A town's nationalistic fervor leads to the burning of foreign goods and the bullying of an adopted child, prompting a group of friends to unite and fight against the growing intolerance.",
+    "movie_id": "south_park",
+    "movie_title": "South Park",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A school principal is impeached and immediately replaced by a parent from the PTA after students are caught using extreme obscenities learned from a controversial movie.",
+    "movie_id": "south_park",
+    "movie_title": "South Park",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A man on a quest to protect the last Bible forms an unexpected friendship with a woman initially sent to seduce him.\", \"skip\": false",
+    "movie_id": "book_of_eli,_the",
+    "movie_title": "Book of Eli, The",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A man traveling through a ruined landscape is ambushed by bandits, whom he swiftly defeats with a sword before performing a",
+    "movie_id": "book_of_eli,_the",
+    "movie_title": "Book of Eli, The",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A lone traveler rescues a woman from violent attackers by gruesomely dispatching them with an arrow to the crotch and",
+    "movie_id": "book_of_eli,_the",
+    "movie_title": "Book of Eli, The",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A young man comforts a famous, insecure woman struggling with pill addiction and feelings of abandonment, ultimately convincing her to focus on her acting career rather than pursuing a romantic entanglement.",
+    "movie_id": "my_week_with_marilyn",
+    "movie_title": "My Week with Marilyn",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A young man secures a film job after a celebrated actress flirts with him and playfully convinces her renowned actor husband.\", ",
+    "movie_id": "my_week_with_marilyn",
+    "movie_title": "My Week with Marilyn",
+    "_scene_idx": 1
+  },
+  {
+    "query": "An actress repeatedly struggles to deliver a line on a movie set, causing tension between her frustrated director and an acting coach who advocates for emotional truth in performance.",
+    "movie_id": "my_week_with_marilyn",
+    "movie_title": "My Week with Marilyn",
+    "_scene_idx": 2
+  },
+  {
+    "query": "During a virtual guitar lesson, a woman admits she's more interested in her male instructor than learning and makes an inappropriate request.",
+    "movie_id": "flora_and_son",
+    "movie_title": "Flora and Son",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A guitar instructor challenges a student's preference for simple pop music by playing a soulful song that deeply impresses her.\", ",
+    "movie_id": "flora_and_son",
+    "movie_title": "Flora and Son",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A mother makes an unconventional and deeply personal appeal to a judge about her challenges as a parent during her son's sentencing hearing.\",",
+    "movie_id": "flora_and_son",
+    "movie_title": "Flora and Son",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\n  \"query\": \"Movie where an obese man is found dead in his kitchen, face down in spaghetti, and detectives discover",
+    "movie_id": "seven",
+    "movie_title": "Seven",
+    "_scene_idx": 0
+  },
+  {
+    "query": "Investigators realize a killer is punishing victims for sins by forcing them to perform acts of atonement, like cutting off a pound of their own flesh.",
+    "movie_id": "seven",
+    "movie_title": "Seven",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"Detectives confront a serial killer who justifies his murders by claiming the victims were guilty of various sins and deserved their fate.\", \"skip",
+    "movie_id": "seven",
+    "movie_title": "Seven",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A character experiencing terrifying events in a supposedly haunted house learns that her experiences were part of a psychological experiment designed to induce mass hysteria.",
+    "movie_id": "haunting,_the",
+    "movie_title": "Haunting, The",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A woman confronts a powerful malevolent entity in a haunted house, revealing its identity and past, before being killed and",
+    "movie_id": "haunting,_the",
+    "movie_title": "Haunting, The",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A woman exploring a grand old greenhouse sensually dances with a large statue connected to the house's history, only to be interrupted by someone watching her.",
+    "movie_id": "haunting,_the",
+    "movie_title": "Haunting, The",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\n  \"query\": \"A powerful crime family head accepts a peace agreement among rival organizations but subtly warns against harm to his exiled son.\",",
+    "movie_id": "godfather",
+    "movie_title": "Godfather",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A new leader of a criminal organization sidelines his loyal advisor, deeming him unsuitable for an anticipated conflict, while pursuing a",
+    "movie_id": "godfather",
+    "movie_title": "Godfather",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A crime boss declines a drug trafficking partnership, stating it's too risky, even as his hot-headed son expresses interest during the meeting.",
+    "movie_id": "godfather",
+    "movie_title": "Godfather",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A tense money and hostage exchange escalates into a chaotic multi-party shootout involving a flamethrower, culminating in a criminal saving his burning accomplice.",
+    "movie_id": "30_minutes_or_less",
+    "movie_title": "30 Minutes or Less",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A man admits to his best friend that he secretly loves his twin sister, sparking a violent argument that unearths years of mutual betrayals.",
+    "movie_id": "30_minutes_or_less",
+    "movie_title": "30 Minutes or Less",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\n  \"query\": \"During a chaotic bank robbery, a dropped gun accidentally shoots a customer, prompting the bumbling robbers to offer him",
+    "movie_id": "30_minutes_or_less",
+    "movie_title": "30 Minutes or Less",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A club employee gets caught between two feuding ballroom house leaders and then leaves with a mysterious stranger who calls him by a different name",
+    "movie_id": "pose",
+    "movie_title": "Pose",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\n  \"query\": \"A young man is left at an apartment for a paid sexual encounter but is forced into non-consensual acts",
+    "movie_id": "pose",
+    "movie_title": "Pose",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A young person who left home after a family dispute gets their injuries covered with makeup by a supportive friend before competing in a ballroom dance battle",
+    "movie_id": "pose",
+    "movie_title": "Pose",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A court scene where a lawyer uncovers a lab's prior DNA contamination incident, but the judge rules against retesting the possibly tainted evidence.",
+    "movie_id": "good_wife,_the___stripped",
+    "movie_title": "Good Wife, The - Stripped",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A woman confronts her imprisoned husband about his infidelity after realizing he arranged for one of his former lovers to become her legal client.",
+    "movie_id": "good_wife,_the___stripped",
+    "movie_title": "Good Wife, The - Stripped",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A man and woman try to retrieve a hotel phone bill from months prior to find a phone number related to a past sexual assault case.",
+    "movie_id": "good_wife,_the___stripped",
+    "movie_title": "Good Wife, The - Stripped",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A female vocalist argues with her managers and lover about performing a politically charged song, suspecting they are colluding with federal agents to suppress it.",
+    "movie_id": "united_states_vs._billie_holiday,_the",
+    "movie_title": "United States vs. Billie Holiday, The",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"Movie where a famous, troubled singer offers drugs to a new man in her dressing room and later declares one of her songs as theirs",
+    "movie_id": "united_states_vs._billie_holiday,_the",
+    "movie_title": "United States vs. Billie Holiday, The",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A female singer performs an illegal club gig arranged by a gangster who makes an unwanted sexual advance, which she rejects, yet she still expresses attraction to him while singing.",
+    "movie_id": "united_states_vs._billie_holiday,_the",
+    "movie_title": "United States vs. Billie Holiday, The",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A marriage proposal during a church service is dramatically interrupted by two people, one speaking about genuine love and the other revealing a secret",
+    "movie_id": "half_of_it,_the",
+    "movie_title": "Half of It, The",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A person helps a friend pursue their crush, only for the crush to confide in them about feeling awkward on a date and then",
+    "movie_id": "half_of_it,_the",
+    "movie_title": "Half of It, The",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"Two young people on a late-night stakeout unexpectedly connect by sharing their personal burdens and the quiet unhappiness they both feel about",
+    "movie_id": "half_of_it,_the",
+    "movie_title": "Half of It, The",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"During a poker game, a new player tells a story about a friend who won a huge jackpot but had to abandon it because he",
+    "movie_id": "mississippi_grind",
+    "movie_title": "Mississippi Grind",
+    "_scene_idx": 0
+  },
+  {
+    "query": "Two men with a mysterious shared past go on a massive casino winning streak, ultimately risking all their accumulated fortune on a single, final roll of the dice.",
+    "movie_id": "mississippi_grind",
+    "movie_title": "Mississippi Grind",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A man meets a menacing woman in a diner who dismisses his stab wound and demands overdue money.",
+    "movie_id": "mississippi_grind",
+    "movie_title": "Mississippi Grind",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A father confronts his son's friends who stole the body and plan to cremate it in the desert, leading to a heated argument about their past relationships and who truly understood the deceased.",
+    "movie_id": "grand_theft_parsons",
+    "movie_title": "Grand Theft Parsons",
+    "_scene_idx": 0
+  },
+  {
+    "query": "Two men try to convince a skeptical police officer that they are meeting someone from a plane to surprise them with a relative's coffin.",
+    "movie_id": "grand_theft_parsons",
+    "movie_title": "Grand Theft Parsons",
+    "_scene_idx": 1
+  },
+  {
+    "query": "Two men are confronted by a police officer who knows they have a stolen body in the back of their hearse.",
+    "movie_id": "grand_theft_parsons",
+    "movie_title": "Grand Theft Parsons",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A group of friends is stranded, and one person cuts herself, believing an ominous plant is growing inside her, only for the",
+    "movie_id": "ruins,_the",
+    "movie_title": "Ruins, The",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A group trapped on a hill by armed guards tries to retrieve a ringing cell phone from a deep shaft, but a",
+    "movie_id": "ruins,_the",
+    "movie_title": "Ruins, The",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A group of travelers is threatened by armed locals and forced to climb a peculiar vine-covered hill after one of them steps on",
+    "movie_id": "ruins,_the",
+    "movie_title": "Ruins, The",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A villain piloting a giant mechanical suit turns into a grotesque, swollen monster after an explosion and then kidnaps a child to get",
+    "movie_id": "boxtrolls,_the",
+    "movie_title": "Boxtrolls, The",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A character's intense rage causes his hand to swell grotesquely and his face to distort, requiring leeches to return him to normal.",
+    "movie_id": "boxtrolls,_the",
+    "movie_title": "Boxtrolls, The",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A boy about to be burned in a furnace is rescued by his boxtroll family, who were believed to have been destroyed",
+    "movie_id": "boxtrolls,_the",
+    "movie_title": "Boxtrolls, The",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A woman recounts how she met her partner after a medical emergency, while their daughter expresses frustration and her partner later reacts negatively to a",
+    "movie_id": "kids_are_alright,_the",
+    "movie_title": "Kids Are Alright, The",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A woman having an affair realizes her lover might be involved with someone else after a telling phone call interrupts their intimate moment.\", \"skip",
+    "movie_id": "kids_are_alright,_the",
+    "movie_title": "Kids Are Alright, The",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A woman trying to fit in at a dinner party awkwardly sings a song, leading the host to defend her from her son's teasing.",
+    "movie_id": "kids_are_alright,_the",
+    "movie_title": "Kids Are Alright, The",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A military-trained person brutally resets an injured actor's ankle before unexpectedly taking over the direction of a failing",
+    "movie_id": "pacifier,_the",
+    "movie_title": "Pacifier, The",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"Someone expertly navigates a room filled with acid and gas traps, then outwits a treacherous former associate by using a secret code to",
+    "movie_id": "pacifier,_the",
+    "movie_title": "Pacifier, The",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A student publicly quits the wrestling team to join a musical, leading to his guardian challenging the coach to a fight.",
+    "movie_id": "pacifier,_the",
+    "movie_title": "Pacifier, The",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"During a chaotic forest battle, a vengeful warrior kills a military leader and vows to exterminate his daughters.\", \"skip\": false",
+    "movie_id": "last_of_the_mochican",
+    "movie_title": "Last of the Mochican",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\n  \"query\": \"A British military column is ambushed in the forest, leading to a brutal massacre until a frontiersman",
+    "movie_id": "last_of_the_mochican",
+    "movie_title": "Last of the Mochican",
+    "_scene_idx": 1
+  },
+  {
+    "query": "Unarmed, a frontiersman confronts a native council to negotiate for captives, leading to one woman being saved by a friend's sacrifice while her sister is taken by a rival.",
+    "movie_id": "last_of_the_mochican",
+    "movie_title": "Last of the Mochican",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A space crew discovers that decades have passed for their loved ones due to time dilation near a black hole, leading them to attempt a desperate slingshot maneuver to escape its immense gravity.",
+    "movie_id": "interstellar",
+    "movie_title": "Interstellar",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"An exploration crew discovers their destination planet is doomed by a black hole, immediately followed by a chaotic gravitational event where they begin falling",
+    "movie_id": "interstellar",
+    "movie_title": "Interstellar",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A space crew learns about navigating incredibly dangerous black holes that will cause significant time loss on Earth, leading to a debate about the wormhole's mysterious origin.",
+    "movie_id": "interstellar",
+    "movie_title": "Interstellar",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\n  \"query\": \"A writer assigned to interview a sports doctor awkwardly attempts to prove she has many black friends after making a",
+    "movie_id": "trainwreck",
+    "movie_title": "Trainwreck",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A man gets into a bizarre public argument in a movie theater, makes strange sexual threats, and then proposes marriage to his girlfriend after",
+    "movie_id": "trainwreck",
+    "movie_title": "Trainwreck",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A daughter gives a brutally honest eulogy for her father at his funeral, admitting he was deeply flawed but also expressing her profound love",
+    "movie_id": "trainwreck",
+    "movie_title": "Trainwreck",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A maid of honor feels inadequate and is subtly undermined by another bridesmaid who attempts to usurp her role in planning the wedding events.\", ",
+    "movie_id": "bridesmaids",
+    "movie_title": "Bridesmaids",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A group of women stranded with a flat tire must work together to fend off a creepy stranger after a heated argument, leading to",
+    "movie_id": "bridesmaids",
+    "movie_title": "Bridesmaids",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A woman has a public meltdown at her friend's bridal shower, confessing her personal struggles and jealousy over the bride's happiness.",
+    "movie_id": "bridesmaids",
+    "movie_title": "Bridesmaids",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"An action movie where operatives infiltrate a chateau to retrieve an explosive briefcase, leading to betrayals and a",
+    "movie_id": "ronin",
+    "movie_title": "Ronin",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A high-speed car chase through city streets and on a major highway is complicated by repeated accusations that one of the drivers slept with",
+    "movie_id": "ronin",
+    "movie_title": "Ronin",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A team's violent mission to retrieve a briefcase turns into a deadly double-cross as members betray each other for the valuable item",
+    "movie_id": "ronin",
+    "movie_title": "Ronin",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A magical queen reluctantly tasks a small, ordinary man with protecting a prophesied baby from an evil ruler, equipping him with magic acorns for the perilous journey.",
+    "movie_id": "willow",
+    "movie_title": "Willow",
+    "_scene_idx": 0
+  },
+  {
+    "query": "Two companions desperately protect an infant during a chaotic wagon chase against multiple attackers, including a monstrous dog and a war chariot, only to find the baby safe after it was seemingly lost in a crash.",
+    "movie_id": "willow",
+    "movie_title": "Willow",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A village festival is violently interrupted by a monstrous dog that attacks, specifically searching for a baby.",
+    "movie_id": "willow",
+    "movie_title": "Willow",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A determined police officer confronts an imprisoned crime boss, demanding he expose not only his criminal network but also corrupt law enforcement officials who profited from him.",
+    "movie_id": "american_gangster",
+    "movie_title": "American Gangster",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A law enforcement officer faces severe backlash and racist insults from his superiors after revealing his theory that a black crime boss is directly importing heroin using military planes, bypassing traditional organized crime.",
+    "movie_id": "american_gangster",
+    "movie_title": "American Gangster",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A drug supplier confronts another dealer for diluting his branded product and selling it under the original name.",
+    "movie_id": "american_gangster",
+    "movie_title": "American Gangster",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"Mischievous creatures are electrocuted in a flooded lobby after an electric monster is released from a telephone line.\",",
+    "movie_id": "gremlins_2",
+    "movie_title": "Gremlins 2",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\n  \"query\": \"A man attempts to hide a lipstick mark and a chaotic creature from his partner by claiming their apartment is",
+    "movie_id": "gremlins_2",
+    "movie_title": "Gremlins 2",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A mischievous creature becomes highly intelligent after drinking a special fluid, then helps another creature gain bat-like wings and sun immunity to",
+    "movie_id": "gremlins_2",
+    "movie_title": "Gremlins 2",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A group of men outlines a plan to tunnel into a casino's underground money room through vulnerable dirt walls.",
+    "movie_id": "ladykillers,_the",
+    "movie_title": "Ladykillers, The",
+    "_scene_idx": 0
+  },
+  {
+    "query": "During a film shoot, a dog wearing an antique gas mask collapses, and a crew member tries to revive it with mouth-to-mouth.",
+    "movie_id": "ladykillers,_the",
+    "movie_title": "Ladykillers, The",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A criminal group's meeting at a diner erupts into a fight when one member brings his girlfriend, who is also involved in their operations, causing another member to lash out.",
+    "movie_id": "ladykillers,_the",
+    "movie_title": "Ladykillers, The",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\n  \"query\": \"A woman reads a very personal and unsettling prose piece about a sexual encounter at an open mic, causing",
+    "movie_id": "asylum",
+    "movie_title": "Asylum",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A man in Prague proposes squatting an empty building for a new artistic venue, but his girlfriend expresses growing disillusionment with his increasingly",
+    "movie_id": "asylum",
+    "movie_title": "Asylum",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"An imprisoned man realizes the sensitive government files he previously possessed are the key to his freedom and instructs his friend to smug",
+    "movie_id": "asylum",
+    "movie_title": "Asylum",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A district attorney uncovers a vast conspiracy involving intelligence agencies and powerful figures behind the John F. Kennedy assassination while facing immense opposition.",
+    "movie_id": "jfk",
+    "movie_title": "JFK",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A tenacious prosecutor attempts to prove a high-level government conspiracy in a president's assassination by using the Zapr",
+    "movie_id": "jfk",
+    "movie_title": "JFK",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"Following the President's assassination, a prosecutor begins investigating local connections after the alleged killer is shot dead on live television,",
+    "movie_id": "jfk",
+    "movie_title": "JFK",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A man seeking clemency for murder is challenged by the parole board, who question if he is acting during the hearing due",
+    "movie_id": "sing_sing",
+    "movie_title": "Sing Sing",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"Two fathers discuss their regret over how their time in prison affected their children, especially one son who followed his father into crime",
+    "movie_id": "sing_sing",
+    "movie_title": "Sing Sing",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A senior member of a program discovers a new participant is carrying a weapon and warns them about the serious consequences their behavior could have on the entire group.",
+    "movie_id": "sing_sing",
+    "movie_title": "Sing Sing",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A group of young newspaper sellers decide to organize a city-wide strike against powerful publishers after their profits are cut.",
+    "movie_id": "newsies",
+    "movie_title": "Newsies",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A group of young strikers is surprised when a governor intervenes to help them, leading to the arrest of their tormentor and",
+    "movie_id": "newsies",
+    "movie_title": "Newsies",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A group of young workers debates fighting violently versus uniting smartly, eventually choosing solidarity and celebrating their bond with a lively musical performance.\",",
+    "movie_id": "newsies",
+    "movie_title": "Newsies",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"After being rejected, a vain hunter is cheered up by his sidekick and villagers who sing an elaborate song praising his",
+    "movie_id": "beauty_and_the_beast",
+    "movie_title": "Beauty and the Beast",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A new guest is treated to an elaborate dinner performance by enchanted household objects who are eager to serve after a long time.",
+    "movie_id": "beauty_and_the_beast",
+    "movie_title": "Beauty and the Beast",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A woman uses a magic mirror to show villagers a beast, but a jealous man turns the crowd against it and incites them to hunt",
+    "movie_id": "beauty_and_the_beast",
+    "movie_title": "Beauty and the Beast",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\n  \"query\": \"A man confronts a creative collaborator about fabricating key events in a supposedly true story, but their shared audience dismisses",
+    "movie_id": "while_we're_young",
+    "movie_title": "While We're Young",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\n  \"query\": \"A man confronts his partner, feeling betrayed by a friend's new collaboration with a controversial figure and suspecting",
+    "movie_id": "while_we're_young",
+    "movie_title": "While We're Young",
+    "_scene_idx": 1
+  },
+  {
+    "query": "Friends visit a bohemian city apartment where the residents keep a chicken as a pet.",
+    "movie_id": "while_we're_young",
+    "movie_title": "While We're Young",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\n  \"query\": \"A man celebrating his partner's birthday is disturbed by the unexpected arrival of her boisterous foreign relatives, and",
+    "movie_id": "birthday_girl",
+    "movie_title": "Birthday Girl",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\n  \"query\": \"A man tells a pregnant woman his ex is dead, then admits she's alive, before police raid his house",
+    "movie_id": "birthday_girl",
+    "movie_title": "Birthday Girl",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\"query\": \"A man throws a woman out of his car after she criticizes his morality and exposes his hidden, savage nature.\", \"skip\":",
+    "movie_id": "birthday_girl",
+    "movie_title": "Birthday Girl",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A writer is asked to script a son's revenge against his powerful, homophobic father who once asked his girlfriend to investigate his son's sexuality.",
+    "movie_id": "broken_embraces",
+    "movie_title": "Broken Embraces",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A man pushes a woman down the stairs after she announces she is leaving him.",
+    "movie_id": "broken_embraces",
+    "movie_title": "Broken Embraces",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A famous author hides his disabled son from the world, but the son eventually meets him and reveals his identity at a public event.",
+    "movie_id": "broken_embraces",
+    "movie_title": "Broken Embraces",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\n  \"query\": \"A man at a family dinner openly discusses his wife's mental illness and suicide, then shares wine with his children to toast",
+    "movie_id": "captain_fantastic",
+    "movie_title": "Captain Fantastic",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"Relatives confront a parent raising children in an isolated, survivalist manner, leading to a young child demonstrating surprising intellectual depth.\", \"skip",
+    "movie_id": "captain_fantastic",
+    "movie_title": "Captain Fantastic",
+    "_scene_idx": 1
+  },
+  {
+    "query": "After a child blames their father for their mother's death, their grandparents accuse the father of child abuse and initiate a custody battle, threatening to involve the police.",
+    "movie_id": "captain_fantastic",
+    "movie_title": "Captain Fantastic",
+    "_scene_idx": 2
+  },
+  {
+    "query": "During a police robot demonstration, a man outsmarts the machine by making its human operator drop the remote control.",
+    "movie_id": "code_of_silence",
+    "movie_title": "Code of Silence",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A father's sudden, urgent departure on his wife's birthday, provoked by a dangerous enemy, leads to a physical fight with",
+    "movie_id": "code_of_silence",
+    "movie_title": "Code of Silence",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A detective tries to convince a guilt-ridden officer to expose his partner for planting a gun on an innocent victim he killed.",
+    "movie_id": "code_of_silence",
+    "movie_title": "Code of Silence",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\"query\": \"A person breaks into a pharmacy window to take medication and is discovered by teachers and children after dropping the entire jar of pills",
+    "movie_id": "queen's_gambit,_the",
+    "movie_title": "Queen's Gambit, The",
+    "_scene_idx": 0
+  },
+  {
+    "query": "A young girl who secretly plays chess with the custodian is recruited to play a simultaneous exhibition against a high school chess club.",
+    "movie_id": "queen's_gambit,_the",
+    "movie_title": "Queen's Gambit, The",
+    "_scene_idx": 1
+  },
+  {
+    "query": "An adult chess coach is surprised when a young girl easily defeats him and explains that she practices by playing games in her head.",
+    "movie_id": "queen's_gambit,_the",
+    "movie_title": "Queen's Gambit, The",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\n  \"query\": \"A famous actress is introduced to a seemingly vulnerable fan who shares a tragic life story, prompting the star",
+    "movie_id": "all_about_eve",
+    "movie_title": "All About Eve",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A young woman receives a prestigious acting award, but a critic's cynical narration and the intense gazes of other theater figures",
+    "movie_id": "all_about_eve",
+    "movie_title": "All About Eve",
+    "_scene_idx": 1
+  },
+  {
+    "query": "{\n  \"query\": \"A veteran stage actress discovers her understudy secretly performed an acclaimed audition, causing her to lash out at her colleagues and leading",
+    "movie_id": "all_about_eve",
+    "movie_title": "All About Eve",
+    "_scene_idx": 2
+  },
+  {
+    "query": "{\n  \"query\": \"A former blockbuster action star, tormented by an internal alter-ego of his past superhero character, struggles to find a replacement",
+    "movie_id": "birdman",
+    "movie_title": "Birdman",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A man is encouraged by his alter ego to embrace his superhero past, leading to him exhibiting powers and flying above the city.\", \"skip",
+    "movie_id": "birdman",
+    "movie_title": "Birdman",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A theater critic threatens to destroy a struggling actor's play on opening night, while a waiter performs a brilliant Shakespeare monologue.",
+    "movie_id": "birdman",
+    "movie_title": "Birdman",
+    "_scene_idx": 2
+  },
+  {
+    "query": "A prominent gay community figure agrees to help a union representative organize a beer boycott in exchange for a future political alliance and job opportunities for his people.",
+    "movie_id": "milk",
+    "movie_title": "Milk",
+    "_scene_idx": 0
+  },
+  {
+    "query": "{\"query\": \"A political campaign prepares for a major ballot initiative defeat and potential civil unrest, only to experience a sudden, overwhelming victory as",
+    "movie_id": "milk",
+    "movie_title": "Milk",
+    "_scene_idx": 1
+  },
+  {
+    "query": "A new gay rights advocate clashes with an older, more established gay leader over the strategy for political progress, debating quiet influence versus running openly gay candidates.",
+    "movie_id": "milk",
+    "movie_title": "Milk",
+    "_scene_idx": 2
+  },
+  {
+    "query": "Bonasera begs Don Corleone for justice after the courts fail him, and Corleone accepts the plea but demands Bonasera swear loyalty in return as payment.",
+    "movie_id": "godfather",
+    "movie_title": "The Godfather",
+    "_scene_idx": 100
+  },
+  {
+    "query": "Michael Corleone lies to his entire family about his peaceful intentions, then in one coordinated move orders the simultaneous assassination of rival gang boss Sollozzo and a corrupt police captain.",
+    "movie_id": "godfather",
+    "movie_title": "The Godfather",
+    "_scene_idx": 101
+  },
+  {
+    "query": "Don Corleone leads a powerful crime family whose loyal enforcer Luca Brasi is sent to infiltrate a rival operation and is killed, triggering a war that forces the Don's youngest son into the family business.",
+    "movie_id": "godfather",
+    "movie_title": "The Godfather",
+    "_scene_idx": 102
+  },
+  {
+    "query": "Eve Harrington manipulates seasoned Broadway star Margo Channing by fabricating a tragic backstory to gain her sympathy and access to her world, then systematically lies to every person who helps her.",
+    "movie_id": "all_about_eve",
+    "movie_title": "All About Eve",
+    "_scene_idx": 100
+  },
+  {
+    "query": "Eve lies to Karen Richards to secure a crucial role, then betrays Bill Sampson who championed her career, revealing herself as a calculating opportunist who has manipulated everyone around her.",
+    "movie_id": "all_about_eve",
+    "movie_title": "All About Eve",
+    "_scene_idx": 101
+  },
+  {
+    "query": "Theater critic Addison deWitt discovers Eve's fraudulent past and confronts her with the truth, then manipulates Eve herself — turning her from predator into prey.",
+    "movie_id": "all_about_eve",
+    "movie_title": "All About Eve",
+    "_scene_idx": 102
+  },
+  {
+    "query": "New Orleans district attorney Jim Garrison confronts the FBI, Secret Service, and Dallas Police as he seeks the truth behind Kennedy's assassination, compiling evidence that multiple conspirators were involved.",
+    "movie_id": "jfk",
+    "movie_title": "JFK",
+    "_scene_idx": 100
+  },
+  {
+    "query": "Jim Garrison discovers the Zapruder film and realizes the official account is impossible, then confronts the federal government itself as his investigation exposes layers of CIA deception.",
+    "movie_id": "jfk",
+    "movie_title": "JFK",
+    "_scene_idx": 101
+  },
+  {
+    "query": "Lee Harvey Oswald lies to the CIA and to Marina who eventually betrays him, while Jack Ruby kills Oswald before he can speak — silencing the only man who could reveal who ordered the assassination.",
+    "movie_id": "jfk",
+    "movie_title": "JFK",
+    "_scene_idx": 102
+  },
+  {
+    "query": "Jack Kelly leads the New York newsboys in a strike against publisher Pulitzer, allies with Spot Conlon's Brooklyn crew, and confronts Warden Snyder who hunts him as a runaway.",
+    "movie_id": "newsies",
+    "movie_title": "Newsies",
+    "_scene_idx": 100
+  },
+  {
+    "query": "Jack Kelly briefly betrays the Newsies by making a secret deal with Pulitzer to escape to Santa Fe, but the other boys discover his betrayal and he must decide where his loyalty truly lies.",
+    "movie_id": "newsies",
+    "movie_title": "Newsies",
+    "_scene_idx": 101
+  },
+  {
+    "query": "A gang of underpaid young newspaper sellers confront a powerful media baron who raised their distribution fees, organizing across rival boroughs and allying with a reporter who reveals their cause.",
+    "movie_id": "newsies",
+    "movie_title": "Newsies",
+    "_scene_idx": 102
+  },
+  {
+    "query": "Adonis Johnson confronts Duke the trainer who refuses to teach him, then seeks Rocky Balboa in Philadelphia — the only man willing to train the illegitimate son of his greatest rival Apollo Creed.",
+    "movie_id": "creed",
+    "movie_title": "Creed",
+    "_scene_idx": 100
+  },
+  {
+    "query": "Mary Anne Creed protects Adonis from knowing his true origins while Rocky Balboa teaches him to fight, pushing him past his limits even as Rocky himself is secretly battling a life-threatening illness.",
+    "movie_id": "creed",
+    "movie_title": "Creed",
+    "_scene_idx": 101
+  },
+  {
+    "query": "FBI agent Carl Hanratty relentlessly seeks and confronts Frank Abagnale Jr across multiple states and countries, while Frank successfully lies to banks, airlines, and hospitals by impersonating a pilot, doctor, and lawyer.",
+    "movie_id": "catch_me_if_you_can",
+    "movie_title": "Catch Me If You Can",
+    "_scene_idx": 100
+  },
+  {
+    "query": "Frank Abagnale Jr learns how to impersonate authority figures so convincingly that he manipulates entire institutions, but the one person he cannot fully deceive is the FBI agent who has spent years chasing him.",
+    "movie_id": "catch_me_if_you_can",
+    "movie_title": "Catch Me If You Can",
+    "_scene_idx": 101
+  },
+  {
+    "query": "Lieutenant John Dunbar confronts a hostile superior officer before being posted alone to an abandoned frontier fort, where he gradually builds trust with a Lakota tribe by learning their language and customs.",
+    "movie_id": "dances_with_wolves",
+    "movie_title": "Dances with Wolves",
+    "_scene_idx": 100
+  },
+  {
+    "query": "John Dunbar confronts Kicking Bird in their tense first encounter, then slowly allies with the Lakota through shared hunting and mutual respect, ultimately realizing the tribe is his true family.",
+    "movie_id": "dances_with_wolves",
+    "movie_title": "Dances with Wolves",
+    "_scene_idx": 101
+  },
+  {
+    "query": "A Union soldier who has lost faith in the war finds himself alone among the Sioux, learns their ways from a woman who speaks English, and is transformed from an outsider into a member of the community.",
+    "movie_id": "dances_with_wolves",
+    "movie_title": "Dances with Wolves",
+    "_scene_idx": 102
+  },
+  {
+    "query": "Terry Prescott loves his sister Sammy but keeps abandoning her — returning broke after years away and forcing her to confront whether she can forgive him while juggling her own troubled life.",
+    "movie_id": "you_can_count_on_me",
+    "movie_title": "You Can Count on Me",
+    "_scene_idx": 100
+  },
+  {
+    "query": "Amy confronts Terry Prescott about his destructive behavior toward his sister, while Rudy Kolinski also confronts Sammy about letting her brother disrupt her life and her son's stability.",
+    "movie_id": "you_can_count_on_me",
+    "movie_title": "You Can Count on Me",
+    "_scene_idx": 101
+  },
+  {
+    "query": "Hancock saves Aaron's life then teaches and confronts him about his attitude, while Mary protects both Hancock and Aaron from criminals seeking revenge — including the villain Clyde.",
+    "movie_id": "hancock",
+    "movie_title": "Hancock",
+    "_scene_idx": 100
+  },
+  {
+    "query": "A reckless superhero lies to a young man about his past, manipulates the people around him, and must confront Mary who reveals the truth about their ancient shared history and why they cannot stay together.",
+    "movie_id": "hancock",
+    "movie_title": "Hancock",
+    "_scene_idx": 101
+  },
+  {
+    "query": "Mateo betrays and lies to both Judit Garcia and Harry Caine about his true identity, while Ernesto Senior kills Lena — the woman Harry loves and had been desperately trying to protect.",
+    "movie_id": "broken_embraces",
+    "movie_title": "Broken Embraces",
+    "_scene_idx": 100
+  },
+  {
+    "query": "A blind filmmaker hides his real identity while Judit sacrifices her own happiness to protect Diego, and the truth about a tragic love affair between a director and his actress is revealed through rediscovered footage.",
+    "movie_id": "broken_embraces",
+    "movie_title": "Broken Embraces",
+    "_scene_idx": 101
+  },
+  {
+    "query": "Harry betrays obsessive producer Ernesto Martel who controls Lena, then saves Lena and loses his sight in the accident that kills her — spending years lying about who he is to escape Martel's reach.",
+    "movie_id": "broken_embraces",
+    "movie_title": "Broken Embraces",
+    "_scene_idx": 102
+  }
+]

@@ -157,7 +157,7 @@ class QueryValidator:
         movie_titles = set()
         actor_names = set()
 
-        for movie_key, movie_data in self.metadata.items():
+        for movie_data in self.metadata.values():
             # Add movie title (full title only to avoid false positives)
             file_info = movie_data.get("file", {})
             title = file_info.get("name", "")
@@ -264,12 +264,22 @@ class QueryValidator:
             return f"Other movie name matches: {', '.join(other_movie_matches)}"
         return "No leakage detected"
 
+    @staticmethod
+    def get_movie_name(query: Dict) -> str:
+        """Return the movie name from a query dict, handling both dataset formats.
+
+        Supports:
+          - eval_queries.json format: ``movie_title`` field
+          - generated_queries.json format: ``movie_name`` field
+        """
+        return query.get("movie_name") or query.get("movie_title", "")
+
     def validate_batch(self, queries: List[Dict]) -> Dict:
         """
         Validate a batch of queries and generate report.
 
         Args:
-            queries: List of query dictionaries
+            queries: List of query dictionaries (either format - see get_movie_name)
 
         Returns:
             Validation report dictionary
@@ -283,8 +293,9 @@ class QueryValidator:
         }
 
         for query in queries:
+            movie_name = self.get_movie_name(query)
             validation_result = self.check_lexical_leakage(
-                query["query"], query["movie_name"]
+                query["query"], movie_name
             )
 
             # Add validation result to query

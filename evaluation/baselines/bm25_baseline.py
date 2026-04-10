@@ -12,6 +12,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 METADATA_PATH = os.path.join(BASE_DIR, "data", "scripts", "metadata", "clean_parsed_meta.json")
 SCRIPTS_BASE_PATH = os.path.join(BASE_DIR, "data", "scripts", "filtered")
 
+# Scene extraction settings - same ranges used in generate_scene_queries.py
+SCENE_MIN_CHARS = 200
+SCENE_MAX_CHARS = 3000
+
 _STOPWORDS = {
     "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
     "of", "with", "by", "from", "is", "was", "are", "were", "be", "been",
@@ -43,9 +47,47 @@ def _read_script(path: str) -> str:
     return ""
 
 
-def _build_corpus(metadata: Dict, scripts_base: str) -> Tuple[List[str], List[str], List[List[str]]]:
-    movie_keys, movie_names, tokenized = [], [], []
+def _extract_scenes(script_text: str) -> List[str]:
+    """Split a screenplay into individual scenes.
+
+    Uses INT./EXT. headings as primary boundaries.  Falls back to CUT TO:
+    markers, then to fixed 1000-character chunks when no headings are found.
+    Returns only scenes within the configured character-length window.
+    """
+    pattern = re.compile(
+        r"(?:^|\n)[ \t]*(?:INT|EXT|INT\./EXT|I/E)[\./]",
+        re.IGNORECASE,
+    )
+    boundaries = [m.start() for m in pattern.finditer(script_text)]
+
+    if len(boundaries) < 3:
+        boundaries = [m.start() for m in re.finditer(r"CUT TO:", script_text, re.IGNORECASE)]
+
+    if len(boundaries) < 3:
+        boundaries = list(range(0, len(script_text), 1000))
+
+    scenes = [
+        script_text[boundaries[i]: boundaries[i + 1]].strip()
+        for i in range(len(boundaries) - 1)
+    ]
+    return [s for s in scenes if SCENE_MIN_CHARS <= len(s) <= SCENE_MAX_CHARS]
+
+
+def _build_scene_corpus(
+    metadata: Dict, scripts_base: str
+) -> Tuple[List[str], List[str], List[List[str]]]:
+    """Build a scene-level corpus.
+
+    Returns:
+        scene_movie_keys: movie key for each scene document
+        scene_movie_names: movie display name for each scene document
+        tokenized: tokenized scene text for each scene document
+    """
+    scene_movie_keys: List[str] = []
+    scene_movie_names: List[str] = []
+    tokenized: List[List[str]] = []
     missing = 0
+    total_scenes = 0
 
     for key, entry in metadata.items():
         file_info = entry.get("file", {})
@@ -65,36 +107,67 @@ def _build_corpus(metadata: Dict, scripts_base: str) -> Tuple[List[str], List[st
             missing += 1
             continue
 
-        movie_keys.append(key)
-        movie_names.append(name)
-        tokenized.append(tokenize(text))
+        scenes = _extract_scenes(text)
+        if not scenes:
+            # Fallback: index the whole script as one document
+            scenes = [text]
 
-    logger.info("BM25 index: %d documents (%d scripts not found)", len(movie_keys), missing)
-    return movie_keys, movie_names, tokenized
+        for scene in scenes:
+            scene_movie_keys.append(key)
+            scene_movie_names.append(name)
+            tokenized.append(tokenize(scene))
+            total_scenes += 1
+
+    logger.info(
+        "BM25 scene index: %d scene documents from %d movies (%d scripts not found)",
+        total_scenes,
+        len(set(scene_movie_keys)),
+        missing,
+    )
+    return scene_movie_keys, scene_movie_names, tokenized
 
 
 class BM25Retriever:
-    """BM25 retriever over movie scripts"""
+    """Scene-level BM25 retriever with max-pool aggregation to movie level.
+
+    Mirrors the ScenePoolEvaluator approach from finetuning/evaluation/scene_evaluator.py:
+    each scene is a separate BM25 document; for a query the best-scoring scene
+    per movie determines that movie's rank.
+    """
+
     name = "bm25"
 
     def __init__(self, metadata_path: str = METADATA_PATH, scripts_base: str = SCRIPTS_BASE_PATH):
         with open(metadata_path, "r", encoding="utf-8") as f:
             metadata = json.load(f)
 
-        self.movie_keys, self.movie_names, corpus = _build_corpus(metadata, scripts_base)
+        self.scene_movie_keys, self.scene_movie_names, corpus = _build_scene_corpus(
+            metadata, scripts_base
+        )
         self.bm25 = BM25Okapi(corpus)
+        # unique ordered list of movie keys (for external consumers that want the count)
+        self.movie_keys = list(dict.fromkeys(self.scene_movie_keys))
 
     def retrieve(self, query: str, top_k: int = 10) -> List[Dict]:
         q_tokens = tokenize(query)
         scores = self.bm25.get_scores(q_tokens)
-        ranked = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)[:top_k]
 
+        # Max-pool: keep the best scene score per movie
+        best: Dict[str, float] = {}
+        names: Dict[str, str] = {}
+        for idx, score in enumerate(scores):
+            mkey = self.scene_movie_keys[idx]
+            if score > best.get(mkey, float("-inf")):
+                best[mkey] = score
+                names[mkey] = self.scene_movie_names[idx]
+
+        ranked = sorted(best.items(), key=lambda x: x[1], reverse=True)[:top_k]
         return [
             {
                 "rank": rank + 1,
-                "movie_key": self.movie_keys[idx],
-                "movie_name": self.movie_names[idx],
-                "score": float(scores[idx]),
+                "movie_key": k,
+                "movie_name": names[k],
+                "score": float(s),
             }
-            for rank, (idx, _) in enumerate(ranked)
+            for rank, (k, s) in enumerate(ranked)
         ]

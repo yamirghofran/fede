@@ -123,7 +123,7 @@ def ndcg_at_k(retrieved: List[Dict], relevance_judgments: Dict[str, float], k: i
 
     Args:
         retrieved: Ordered list of results with 'movie_key' field
-        relevance_judgments: {movie_key: grade} where grade ∈ {0.0, 1.0, 2.0}
+        relevance_judgments: {movie_key: grade} where grade is {0.0, 1.0, 2.0}
         k: cutoff
 
     Returns:
